@@ -36,7 +36,7 @@ export type MeldType = 'shuntsu' | 'koutsu' | 'pair';
 export interface Meld {
   type: MeldType;
   tiles: Tile[];
-  isOpen: boolean; // 明刻か暗刻か
+  containsWinningTile: boolean; // 和了牌を含むかどうか（刻子符計算用）
 }
 
 export const TILES = {
@@ -355,7 +355,7 @@ function findMeldComposition(tileCounts: Record<string, number>, winningTile: Ti
       const melds = findMelds(remaining, winningTile, []);
       if (melds) {
         return [
-          { type: 'pair', tiles: [pairTile, pairTile], isOpen: false },
+          { type: 'pair', tiles: [pairTile as Tile, pairTile as Tile], containsWinningTile: false },
           ...melds
         ];
       }
@@ -376,10 +376,11 @@ function findMelds(tiles: Record<string, number>, winningTile: Tile, accumulated
     if (tiles[tile] >= 3) {
       const remaining = {...tiles};
       remaining[tile] -= 3;
-      const isOpen = tile === winningTile; // 和了牌が含まれる刻子は明刻扱いの可能性
+      // 和了牌を含む刻子かどうかをマーク
+      const containsWinningTile = tile === winningTile;
       const result = findMelds(remaining, winningTile, [
         ...accumulated,
-        { type: 'koutsu', tiles: [tile, tile, tile], isOpen }
+        { type: 'koutsu', tiles: [tile as Tile, tile as Tile, tile as Tile], containsWinningTile }
       ]);
       if (result) return result;
     }
@@ -399,7 +400,7 @@ function findMelds(tiles: Record<string, number>, winningTile: Tile, accumulated
           remaining[tile3]--;
           const result = findMelds(remaining, winningTile, [
             ...accumulated,
-            { type: 'shuntsu', tiles: [tile, tile2, tile3], isOpen: false }
+            { type: 'shuntsu', tiles: [tile as Tile, tile2 as Tile, tile3 as Tile], containsWinningTile: false }
           ]);
           if (result) return result;
         }
@@ -560,9 +561,10 @@ export function calculateFu(
       const tile = meld.tiles[0];
       const isYaochuhai = tile.length === 1 || tile[0] === '1' || tile[0] === '9';
       
-      // ロンの場合、和了牌を含む刻子は明刻扱い
-      // ツモの場合、すべて暗刻扱い
-      let isAnkou = isTsumo || tile !== winningTile;
+      // 刻子符の判定:
+      // - ツモの場合: すべて暗刻（和了牌を含んでいても暗刻）
+      // - ロンの場合: 和了牌を含む刻子は明刻、それ以外は暗刻
+      let isAnkou = isTsumo || !meld.containsWinningTile;
       
       if (isYaochuhai) {
         fu += isAnkou ? 8 : 4;
