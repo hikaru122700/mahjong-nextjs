@@ -21,6 +21,24 @@ export interface CalculationResult {
   yaku: Yaku[];
 }
 
+// 待ち形のタイプ
+export type WaitingPattern = 
+  | 'ryanmen'   // 両面待ち
+  | 'kanchan'   // 嵌張待ち
+  | 'penchan'   // 辺張待ち
+  | 'shanpon'   // 双碰待ち
+  | 'tanki';    // 単騎待ち
+
+// 面子のタイプ
+export type MeldType = 'shuntsu' | 'koutsu' | 'pair';
+
+// 面子の情報
+export interface Meld {
+  type: MeldType;
+  tiles: Tile[];
+  isOpen: boolean; // 明刻か暗刻か
+}
+
 export const TILES = {
   manzu: ['1m', '2m', '3m', '4m', '5m', '6m', '7m', '8m', '9m'],
   pinzu: ['1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p'],
@@ -326,31 +344,226 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   return yaku;
 }
 
-export function calculateFu(hand: Tile[], winningTile: Tile, isTsumo: boolean, isMenzen: boolean): number {
-  let fu = 20; // 基本符
+// 手牌の面子構成を取得する関数
+function findMeldComposition(tileCounts: Record<string, number>, winningTile: Tile): Meld[] | null {
+  // 雀頭を選択
+  for (let pairTile in tileCounts) {
+    if (tileCounts[pairTile] >= 2) {
+      const remaining = {...tileCounts};
+      remaining[pairTile] -= 2;
+      
+      const melds = findMelds(remaining, winningTile, []);
+      if (melds) {
+        return [
+          { type: 'pair', tiles: [pairTile, pairTile], isOpen: false },
+          ...melds
+        ];
+      }
+    }
+  }
+  return null;
+}
 
-  // ツモ符
-  if (isTsumo) fu += 2;
+// 面子を再帰的に見つける
+function findMelds(tiles: Record<string, number>, winningTile: Tile, accumulated: Meld[]): Meld[] | null {
+  // すべての牌が使われた場合
+  if (Object.values(tiles).every(c => c === 0)) {
+    return accumulated;
+  }
 
-  // 門前ロン符
-  if (!isTsumo && isMenzen) fu += 10;
+  // 刻子チェック
+  for (let tile in tiles) {
+    if (tiles[tile] >= 3) {
+      const remaining = {...tiles};
+      remaining[tile] -= 3;
+      const isOpen = tile === winningTile; // 和了牌が含まれる刻子は明刻扱いの可能性
+      const result = findMelds(remaining, winningTile, [
+        ...accumulated,
+        { type: 'koutsu', tiles: [tile, tile, tile], isOpen }
+      ]);
+      if (result) return result;
+    }
+  }
 
-  // 雀頭符
+  // 順子チェック
+  for (let tile in tiles) {
+    if (tiles[tile] > 0) {
+      const [num, suit] = parseTile(tile);
+      if (num && num <= 7) {
+        const tile2 = `${num + 1}${suit}`;
+        const tile3 = `${num + 2}${suit}`;
+        if (tiles[tile2] > 0 && tiles[tile3] > 0) {
+          const remaining = {...tiles};
+          remaining[tile]--;
+          remaining[tile2]--;
+          remaining[tile3]--;
+          const result = findMelds(remaining, winningTile, [
+            ...accumulated,
+            { type: 'shuntsu', tiles: [tile, tile2, tile3], isOpen: false }
+          ]);
+          if (result) return result;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+// 待ち形を判定する関数
+function detectWaitingPattern(hand: Tile[], winningTile: Tile): WaitingPattern {
   const tileCounts: Record<string, number> = {};
   hand.forEach(tile => {
     tileCounts[tile] = (tileCounts[tile] || 0) + 1;
   });
 
-  // 役牌雀頭
-  if (tileCounts['白'] === 2 || tileCounts['發'] === 2 || tileCounts['中'] === 2) {
+  // 七対子の場合は単騎待ち扱い
+  const pairs = Object.values(tileCounts).filter(count => count === 2);
+  if (pairs.length === 7) {
+    return 'tanki';
+  }
+
+  // 和了牌を除いた手牌でカウント
+  const tileCountsWithoutWinning: Record<string, number> = {...tileCounts};
+  tileCountsWithoutWinning[winningTile] = (tileCountsWithoutWinning[winningTile] || 0) - 1;
+
+  // 単騎待ちチェック（雀頭が和了牌）
+  if (tileCountsWithoutWinning[winningTile] === 1) {
+    // この牌を雀頭として残りが4面子になるか
+    const withoutPair = {...tileCountsWithoutWinning};
+    withoutPair[winningTile]--;
+    if (checkMentsu(withoutPair, 4)) {
+      return 'tanki';
+    }
+  }
+
+  // 双碰待ちチェック（刻子になる）
+  if (tileCounts[winningTile] === 3) {
+    return 'shanpon';
+  }
+
+  // 順子での待ちを判定
+  const [num, suit] = parseTile(winningTile);
+  if (num && suit) {
+    // 辺張チェック（1-2待ち3 or 8-9待ち7）
+    if (num === 3) {
+      const tile1 = `1${suit}`;
+      const tile2 = `2${suit}`;
+      if (tileCountsWithoutWinning[tile1] >= 1 && tileCountsWithoutWinning[tile2] >= 1) {
+        return 'penchan';
+      }
+    }
+    if (num === 7) {
+      const tile8 = `8${suit}`;
+      const tile9 = `9${suit}`;
+      if (tileCountsWithoutWinning[tile8] >= 1 && tileCountsWithoutWinning[tile9] >= 1) {
+        return 'penchan';
+      }
+    }
+
+    // 嵌張チェック（X-Z待ちY where Y = X+1, Z = X+2）
+    if (num >= 2 && num <= 8) {
+      const tileBefore = `${num - 1}${suit}`;
+      const tileAfter = `${num + 1}${suit}`;
+      // X-(Y)-Z のパターン
+      if (tileCountsWithoutWinning[tileBefore] >= 1 && tileCountsWithoutWinning[tileAfter] >= 1) {
+        return 'kanchan';
+      }
+    }
+
+    // 両面待ちチェック
+    // X-Y待ちZ (where Z = Y+1) or Y-Z待ちX (where X = Y-1)
+    if (num >= 2 && num <= 8) {
+      const tileBefore = `${num - 1}${suit}`;
+      const tileAfter = `${num + 1}${suit}`;
+      if (tileCountsWithoutWinning[tileBefore] >= 1 || tileCountsWithoutWinning[tileAfter] >= 1) {
+        // 辺張・嵌張でない場合は両面
+        return 'ryanmen';
+      }
+    }
+  }
+
+  // デフォルトは両面待ち
+  return 'ryanmen';
+}
+
+export function calculateFu(
+  hand: Tile[], 
+  winningTile: Tile, 
+  isTsumo: boolean, 
+  isMenzen: boolean,
+  bakaze?: string,
+  jikaze?: string
+): number {
+  const tileCounts: Record<string, number> = {};
+  hand.forEach(tile => {
+    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
+  });
+
+  // 七対子は25符固定
+  const pairs = Object.values(tileCounts).filter(count => count === 2);
+  if (pairs.length === 7) {
+    return 25;
+  }
+
+  // 平和判定用
+  const isPinfuHand = isPinfu(hand, winningTile, isMenzen);
+  
+  let fu = 20; // 基本符
+
+  // ツモ符
+  if (isTsumo) {
     fu += 2;
   }
 
-  // 刻子符
-  for (let tile in tileCounts) {
-    if (tileCounts[tile] >= 3) {
+  // 門前ロン符
+  if (!isTsumo && isMenzen) {
+    fu += 10;
+  }
+
+  // 面子構成を取得
+  const meldComposition = findMeldComposition(tileCounts, winningTile);
+  
+  if (meldComposition) {
+    // 雀頭符の判定
+    const pairMeld = meldComposition.find(m => m.type === 'pair');
+    if (pairMeld) {
+      const pairTile = pairMeld.tiles[0];
+      
+      // 役牌雀頭（三元牌）
+      if (pairTile === '白' || pairTile === '發' || pairTile === '中') {
+        fu += 2;
+      }
+      
+      // 場風雀頭
+      if (bakaze) {
+        const bakazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+        const bakazeTile = bakazeMap[bakaze];
+        if (pairTile === bakazeTile) {
+          fu += 2;
+        }
+      }
+      
+      // 自風雀頭
+      if (jikaze) {
+        const jikazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+        const jikazeTile = jikazeMap[jikaze];
+        if (pairTile === jikazeTile) {
+          fu += 2;
+        }
+      }
+    }
+
+    // 刻子符の判定
+    const koutsuMelds = meldComposition.filter(m => m.type === 'koutsu');
+    for (const meld of koutsuMelds) {
+      const tile = meld.tiles[0];
       const isYaochuhai = tile.length === 1 || tile[0] === '1' || tile[0] === '9';
-      const isAnkou = true; // 簡易判定
+      
+      // ロンの場合、和了牌を含む刻子は明刻扱い
+      // ツモの場合、すべて暗刻扱い
+      let isAnkou = isTsumo || tile !== winningTile;
+      
       if (isYaochuhai) {
         fu += isAnkou ? 8 : 4;
       } else {
@@ -359,14 +572,17 @@ export function calculateFu(hand: Tile[], winningTile: Tile, isTsumo: boolean, i
     }
   }
 
-  // 待ち符（簡易的に辺張、嵌張、単騎の場合+2）
-  fu += 2;
+  // 待ち符の判定
+  const waitingPattern = detectWaitingPattern(hand, winningTile);
+  if (waitingPattern === 'kanchan' || waitingPattern === 'penchan' || waitingPattern === 'tanki') {
+    fu += 2;
+  }
 
   // 符の繰り上げ（10符単位）
   fu = Math.ceil(fu / 10) * 10;
 
-  // 平和ツモは20符固定
-  if (isTsumo && isMenzen && fu === 20) {
+  // 平和ツモの特殊処理：20符固定
+  if (isPinfuHand && isTsumo && isMenzen) {
     return 20;
   }
 
@@ -440,7 +656,7 @@ export function calculateScore(
   yaku.forEach(y => totalHan += y.han);
 
   // 符計算
-  const fu = calculateFu(fullHand, winningTile, options.isTsumo, options.isMenzen);
+  const fu = calculateFu(fullHand, winningTile, options.isTsumo, options.isMenzen, options.bakaze, options.jikaze);
 
   // 点数計算
   const score = calculateFinalScore(totalHan, fu, options.jikaze === 'ton', options.isTsumo);
