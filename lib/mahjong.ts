@@ -340,7 +340,7 @@ function isIipeikou(tileCounts: Record<string, number>): boolean {
   const mentsuSets = extractAllMentsuSets(tileCounts);
   
   for (const set of mentsuSets) {
-    // 順子が4つある必要がある（二盃口の条件も満たしてしまうので後で優先度を考慮）
+    // 順子が2つ以上必要（二盃口の条件も満たしてしまうので後で優先度を考慮）
     if (set.shuntsu.length < 2) continue;
     
     // 順子を正規化して比較
@@ -484,8 +484,7 @@ function isChanta(tileCounts: Record<string, number>): boolean {
     if (!allShuntsuValid) continue;
     
     // 字牌と数牌が混在しているか確認（純チャンでない）
-    const hasJihai = [set.jantou, ...set.koutsu].some(tile => tile.length === 1) ||
-                      set.shuntsu.length === 0; // 順子がない場合は字牌の存在をチェック
+    const hasJihai = [set.jantou, ...set.koutsu].some(tile => tile.length === 1);
     const hasNumber = [set.jantou, ...set.koutsu].some(tile => tile.length === 2) ||
                       set.shuntsu.length > 0;
     
@@ -567,13 +566,16 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
     yaku.push({ name: '七対子', han: 2 });
   }
 
+  // 二盃口と一盃口の判定（効率化のため一度だけ計算）
+  const hasRyanpeikou = pairs.length !== 7 && isRyanpeikou(tileCounts);
+  
   // 二盃口（リャンペーコー）- 七対子より優先度が高い
-  if (pairs.length !== 7 && isRyanpeikou(tileCounts)) {
+  if (hasRyanpeikou) {
     yaku.push({ name: '二盃口', han: 3 });
   }
 
   // 一盃口（イーペーコー）- 二盃口がある場合は除外
-  if (pairs.length !== 7 && !isRyanpeikou(tileCounts) && isIipeikou(tileCounts)) {
+  if (pairs.length !== 7 && !hasRyanpeikou && isIipeikou(tileCounts)) {
     yaku.push({ name: '一盃口', han: 1 });
   }
 
@@ -598,13 +600,16 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
     yaku.push({ name: '小三元', han: 2 });
   }
 
+  // 純全帯么九と混全帯么九の判定（効率化のため一度だけ計算）
+  const hasJunchan = isJunchan(tileCounts);
+  
   // 純全帯么九（ジュンチャン）
-  if (isJunchan(tileCounts)) {
+  if (hasJunchan) {
     yaku.push({ name: '純全帯么九', han: 3 });
   }
 
   // 混全帯么九（チャンタ）- 純チャンがある場合は除外
-  if (!isJunchan(tileCounts) && isChanta(tileCounts)) {
+  if (!hasJunchan && isChanta(tileCounts)) {
     yaku.push({ name: '混全帯么九', han: 2 });
   }
 
