@@ -252,6 +252,281 @@ function isChinitsu(hand: Tile[]): boolean {
   return suits.size === 1 && hand.every(tile => tile.length === 2);
 }
 
+// メンツ構造を抽出する補助型
+interface MentsuSet {
+  shuntsu: string[][]; // 順子リスト
+  koutsu: string[];    // 刻子リスト
+  jantou: string;      // 雀頭
+}
+
+// 全てのメンツ組み合わせを取得
+function extractAllMentsuSets(tileCounts: Record<string, number>): MentsuSet[] {
+  const results: MentsuSet[] = [];
+  
+  // 雀頭を選択
+  for (let jantou in tileCounts) {
+    if (tileCounts[jantou] >= 2) {
+      const remaining = {...tileCounts};
+      remaining[jantou] -= 2;
+      
+      // 残りのメンツを抽出
+      const mentsuCombinations = extractMentsu(remaining, 4);
+      for (const combination of mentsuCombinations) {
+        results.push({
+          shuntsu: combination.shuntsu,
+          koutsu: combination.koutsu,
+          jantou
+        });
+      }
+    }
+  }
+  
+  return results;
+}
+
+// メンツを再帰的に抽出
+function extractMentsu(tiles: Record<string, number>, count: number): Array<{shuntsu: string[][], koutsu: string[]}> {
+  if (count === 0) {
+    const isEmpty = Object.values(tiles).every(c => c === 0);
+    return isEmpty ? [{shuntsu: [], koutsu: []}] : [];
+  }
+  
+  const results: Array<{shuntsu: string[][], koutsu: string[]}> = [];
+  
+  // 刻子を試す
+  for (let tile in tiles) {
+    if (tiles[tile] >= 3) {
+      const remaining = {...tiles};
+      remaining[tile] -= 3;
+      const subResults = extractMentsu(remaining, count - 1);
+      for (const sub of subResults) {
+        results.push({
+          shuntsu: sub.shuntsu,
+          koutsu: [tile, ...sub.koutsu]
+        });
+      }
+    }
+  }
+  
+  // 順子を試す
+  for (let tile in tiles) {
+    if (tiles[tile] > 0) {
+      const [num, suit] = parseTile(tile);
+      if (num && num <= 7) {
+        const tile2 = `${num + 1}${suit}`;
+        const tile3 = `${num + 2}${suit}`;
+        if (tiles[tile2] > 0 && tiles[tile3] > 0) {
+          const remaining = {...tiles};
+          remaining[tile]--;
+          remaining[tile2]--;
+          remaining[tile3]--;
+          const subResults = extractMentsu(remaining, count - 1);
+          for (const sub of subResults) {
+            results.push({
+              shuntsu: [[tile, tile2, tile3], ...sub.shuntsu],
+              koutsu: sub.koutsu
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return results;
+}
+
+// 一盃口（イーペーコー）: 同じ順子が2組ある
+function isIipeikou(tileCounts: Record<string, number>): boolean {
+  const mentsuSets = extractAllMentsuSets(tileCounts);
+  
+  for (const set of mentsuSets) {
+    // 順子が4つある必要がある（二盃口の条件も満たしてしまうので後で優先度を考慮）
+    if (set.shuntsu.length < 2) continue;
+    
+    // 順子を正規化して比較
+    const shuntsuStrings = set.shuntsu.map(s => s.join(','));
+    const counts: Record<string, number> = {};
+    shuntsuStrings.forEach(s => {
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    
+    // 同じ順子が2組以上あるかチェック
+    if (Object.values(counts).some(c => c >= 2)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// 二盃口（リャンペーコー）: 一盃口が2組ある（4つの順子が2ペア）
+function isRyanpeikou(tileCounts: Record<string, number>): boolean {
+  const mentsuSets = extractAllMentsuSets(tileCounts);
+  
+  for (const set of mentsuSets) {
+    // 全て順子である必要がある
+    if (set.shuntsu.length !== 4 || set.koutsu.length !== 0) continue;
+    
+    // 順子を正規化して比較
+    const shuntsuStrings = set.shuntsu.map(s => s.join(','));
+    const counts: Record<string, number> = {};
+    shuntsuStrings.forEach(s => {
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    
+    // 2組のペアがあるかチェック（ちょうど2種類の順子が各2つずつ）
+    const pairs = Object.values(counts).filter(c => c === 2);
+    if (pairs.length === 2) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// 三色同順（サンシキドウジュン）: 3種類の同じ数字の順子が揃う
+function isSanshikudoujun(tileCounts: Record<string, number>): boolean {
+  const mentsuSets = extractAllMentsuSets(tileCounts);
+  
+  for (const set of mentsuSets) {
+    // 順子が3つ以上必要
+    if (set.shuntsu.length < 3) continue;
+    
+    // 各順子の開始牌の数字を取得
+    for (let i = 0; i < set.shuntsu.length; i++) {
+      const [num1, suit1] = parseTile(set.shuntsu[i][0]);
+      if (!num1 || !suit1) continue;
+      
+      // 同じ数字で異なるスートの順子を探す
+      const suits = new Set([suit1]);
+      for (let j = i + 1; j < set.shuntsu.length; j++) {
+        const [num2, suit2] = parseTile(set.shuntsu[j][0]);
+        if (num2 === num1 && suit2 && suit2 !== suit1) {
+          suits.add(suit2);
+        }
+      }
+      
+      if (suits.size === 3) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+// 一気通貫（イッキツウカン）: 同種の123、456、789の順子が揃う
+function isIkkitsuukan(tileCounts: Record<string, number>): boolean {
+  const mentsuSets = extractAllMentsuSets(tileCounts);
+  
+  for (const set of mentsuSets) {
+    // 順子が3つ以上必要
+    if (set.shuntsu.length < 3) continue;
+    
+    // 各スートについてチェック
+    const suits = ['m', 'p', 's'];
+    for (const suit of suits) {
+      const has123 = set.shuntsu.some(s => 
+        s[0] === `1${suit}` && s[1] === `2${suit}` && s[2] === `3${suit}`
+      );
+      const has456 = set.shuntsu.some(s => 
+        s[0] === `4${suit}` && s[1] === `5${suit}` && s[2] === `6${suit}`
+      );
+      const has789 = set.shuntsu.some(s => 
+        s[0] === `7${suit}` && s[1] === `8${suit}` && s[2] === `9${suit}`
+      );
+      
+      if (has123 && has456 && has789) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+// 么九牌（ヤオチュウハイ）かどうか判定
+function isYaochuuhai(tile: Tile): boolean {
+  if (tile.length === 1) return true; // 字牌
+  if (tile.length === 2) {
+    const num = parseInt(tile[0]);
+    return num === 1 || num === 9;
+  }
+  return false;
+}
+
+// 一九牌（イーチュウハイ）かどうか判定（端牌のみ、字牌は含まない）
+function isTerminal(tile: Tile): boolean {
+  if (tile.length === 2) {
+    const num = parseInt(tile[0]);
+    return num === 1 || num === 9;
+  }
+  return false;
+}
+
+// 混全帯么九（チャンタ）: 全ての面子と雀頭に么九牌が含まれる
+function isChanta(tileCounts: Record<string, number>): boolean {
+  const mentsuSets = extractAllMentsuSets(tileCounts);
+  
+  for (const set of mentsuSets) {
+    // 雀頭が么九牌か
+    if (!isYaochuuhai(set.jantou)) continue;
+    
+    // 全ての刻子が么九牌か
+    const allKoutsuValid = set.koutsu.every(tile => isYaochuuhai(tile));
+    if (!allKoutsuValid) continue;
+    
+    // 全ての順子に么九牌が含まれるか（1-2-3 または 7-8-9）
+    const allShuntsuValid = set.shuntsu.every(s => {
+      const [num] = parseTile(s[0]);
+      return num === 1 || num === 7;
+    });
+    if (!allShuntsuValid) continue;
+    
+    // 字牌と数牌が混在しているか確認（純チャンでない）
+    const hasJihai = [set.jantou, ...set.koutsu].some(tile => tile.length === 1) ||
+                      set.shuntsu.length === 0; // 順子がない場合は字牌の存在をチェック
+    const hasNumber = [set.jantou, ...set.koutsu].some(tile => tile.length === 2) ||
+                      set.shuntsu.length > 0;
+    
+    if (hasJihai && hasNumber) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// 純全帯么九（ジュンチャン）: 全ての面子と雀頭に一九牌が含まれる（字牌なし）
+function isJunchan(tileCounts: Record<string, number>): boolean {
+  const mentsuSets = extractAllMentsuSets(tileCounts);
+  
+  for (const set of mentsuSets) {
+    // 字牌が含まれていたら純チャンではない
+    const hasJihai = [set.jantou, ...set.koutsu].some(tile => tile.length === 1);
+    if (hasJihai) continue;
+    
+    // 雀頭が一九牌か
+    if (!isTerminal(set.jantou)) continue;
+    
+    // 全ての刻子が一九牌か
+    const allKoutsuValid = set.koutsu.every(tile => isTerminal(tile));
+    if (!allKoutsuValid) continue;
+    
+    // 全ての順子に一九牌が含まれるか（1-2-3 または 7-8-9）
+    const allShuntsuValid = set.shuntsu.every(s => {
+      const [num] = parseTile(s[0]);
+      return num === 1 || num === 7;
+    });
+    
+    if (allShuntsuValid) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOptions): Yaku[] {
   const yaku: Yaku[] = [];
   const tileCounts: Record<string, number> = {};
@@ -292,6 +567,16 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
     yaku.push({ name: '七対子', han: 2 });
   }
 
+  // 二盃口（リャンペーコー）- 七対子より優先度が高い
+  if (pairs.length !== 7 && isRyanpeikou(tileCounts)) {
+    yaku.push({ name: '二盃口', han: 3 });
+  }
+
+  // 一盃口（イーペーコー）- 二盃口がある場合は除外
+  if (pairs.length !== 7 && !isRyanpeikou(tileCounts) && isIipeikou(tileCounts)) {
+    yaku.push({ name: '一盃口', han: 1 });
+  }
+
   // 対々和
   if (isToitoihou(hand)) {
     yaku.push({ name: '対々和', han: 2 });
@@ -311,6 +596,26 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   // 小三元
   if (isShouSangen(tileCounts)) {
     yaku.push({ name: '小三元', han: 2 });
+  }
+
+  // 純全帯么九（ジュンチャン）
+  if (isJunchan(tileCounts)) {
+    yaku.push({ name: '純全帯么九', han: 3 });
+  }
+
+  // 混全帯么九（チャンタ）- 純チャンがある場合は除外
+  if (!isJunchan(tileCounts) && isChanta(tileCounts)) {
+    yaku.push({ name: '混全帯么九', han: 2 });
+  }
+
+  // 一気通貫（イッキツウカン）
+  if (isIkkitsuukan(tileCounts)) {
+    yaku.push({ name: '一気通貫', han: 2 });
+  }
+
+  // 三色同順（サンシキドウジュン）
+  if (isSanshikudoujun(tileCounts)) {
+    yaku.push({ name: '三色同順', han: 2 });
   }
 
   // 混一色
