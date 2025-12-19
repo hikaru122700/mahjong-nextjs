@@ -53,13 +53,20 @@ export default function Home() {
     return false;
   };
 
-  // 鳴きがある場合は門前をfalseに設定
+  // 鳴きの状態に応じて門前/リーチを制御（暗槓は門前扱い）
   useEffect(() => {
-    if (melds.length > 0) {
-      setMenzen(false);
-      setRiichi(false);
+    const hasOpenMeld = melds.some(meld => meld.type !== 'ankan');
+    if (hasOpenMeld) {
+      if (menzen) {
+        setMenzen(false);
+      }
+      if (riichi) {
+        setRiichi(false);
+      }
+    } else if (!menzen) {
+      setMenzen(true);
     }
-  }, [melds]);
+  }, [melds, menzen, riichi]);
 
   const addTileToHand = (tile: Tile) => {
     const meldTileCount = getMeldTileCount(melds);

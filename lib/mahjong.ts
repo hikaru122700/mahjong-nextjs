@@ -911,7 +911,9 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   });
 
   const melds = options.melds || [];
-  const hasMelds = melds.length > 0;
+  const hasAnyMelds = melds.length > 0;
+  const hasOpenMelds = melds.some(meld => meld.type !== 'ankan');
+  const isMenzenHand = options.isMenzen && !hasOpenMelds;
 
   // ========== 役満チェック（優先） ==========
 
@@ -984,7 +986,7 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   // ========== 通常役のチェック ==========
 
   // リーチ（門前のみ）
-  if (options.isRiichi && !hasMelds) {
+  if (options.isRiichi && isMenzenHand) {
     yaku.push({ name: 'リーチ', han: 1 });
     if (options.isIppatsu) {
       yaku.push({ name: '一発', han: 1 });
@@ -992,7 +994,7 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   }
 
   // ツモ（門前のみ）
-  if (options.isTsumo && options.isMenzen && !hasMelds) {
+  if (options.isTsumo && isMenzenHand) {
     yaku.push({ name: '門前清自摸和', han: 1 });
   }
 
@@ -1002,25 +1004,25 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   }
 
   // 平和（ピンフ）- 門前のみ
-  if (isPinfu(hand, winningTile, options.isMenzen, options.bakaze, options.jikaze) && !hasMelds) {
+  if (isMenzenHand && isPinfu(hand, winningTile, isMenzenHand, options.bakaze, options.jikaze)) {
     yaku.push({ name: '平和', han: 1 });
   }
 
   // 二盃口（門前のみ）
-  if (!hasMelds && isRyanpeikou(hand, options.isMenzen)) {
+  if (isMenzenHand && isRyanpeikou(hand, isMenzenHand)) {
     yaku.push({ name: '二盃口', han: 3 });
-  } else if (!hasMelds && isIipeikou(hand, options.isMenzen)) {
+  } else if (isMenzenHand && isIipeikou(hand, isMenzenHand)) {
     yaku.push({ name: '一盃口', han: 1 });
   }
 
   // 一気通貫
   if (isIttsuu(hand, melds)) {
-    yaku.push({ name: '一気通貫', han: hasMelds ? 1 : 2 });
+    yaku.push({ name: '一気通貫', han: hasOpenMelds ? 1 : 2 });
   }
 
   // 三色同順
   if (isSanshokuDoujun(hand, melds)) {
-    yaku.push({ name: '三色同順', han: hasMelds ? 1 : 2 });
+    yaku.push({ name: '三色同順', han: hasOpenMelds ? 1 : 2 });
   }
 
   // 役牌
@@ -1028,7 +1030,7 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   yaku.push(...yakuhai);
 
   // 七対子（鳴きがある場合は不可）
-  if (!hasMelds) {
+  if (!hasAnyMelds) {
     const pairs = Object.values(tileCounts).filter(count => count === 2);
     if (pairs.length === 7) {
       yaku.push({ name: '七対子', han: 2 });
@@ -1058,21 +1060,21 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
 
   // 純全帯么九
   if (isJunchan(hand, melds)) {
-    yaku.push({ name: '純全帯么九', han: hasMelds ? 2 : 3 });
+    yaku.push({ name: '純全帯么九', han: hasOpenMelds ? 2 : 3 });
   }
   // 混全帯么九
   else if (isChanta(hand, melds)) {
-    yaku.push({ name: '混全帯么九', han: hasMelds ? 1 : 2 });
+    yaku.push({ name: '混全帯么九', han: hasOpenMelds ? 1 : 2 });
   }
 
   // 混一色（鳴きがある場合は2翻）
   if (isHonitsu(hand, melds)) {
-    yaku.push({ name: '混一色', han: hasMelds ? 2 : 3 });
+    yaku.push({ name: '混一色', han: hasOpenMelds ? 2 : 3 });
   }
 
   // 清一色（鳴きがある場合は5翻）
   if (isChinitsu(hand, melds)) {
-    yaku.push({ name: '清一色', han: hasMelds ? 5 : 6 });
+    yaku.push({ name: '清一色', han: hasOpenMelds ? 5 : 6 });
   }
 
   return yaku;
@@ -1188,6 +1190,8 @@ export function calculateFu(
     tileCounts[tile] = (tileCounts[tile] || 0) + 1;
   });
 
+  const hasOpenMelds = Boolean(melds?.some(meld => meld.type !== 'ankan'));
+
   // 七対子は25符固定
   const pairs = Object.values(tileCounts).filter(count => count === 2);
   if (pairs.length === 7) {
@@ -1205,8 +1209,7 @@ export function calculateFu(
   if (isTsumo) fu += 2;
 
   // 門前ロン符（鳴きがない場合のみ）
-  const hasMelds = (melds?.length || 0) > 0;
-  if (!isTsumo && isMenzen && !hasMelds) fu += 10;
+  if (!isTsumo && isMenzen) fu += 10;
 
   // 雀頭符（役牌雀頭）
   const bakazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
@@ -1286,7 +1289,7 @@ export function calculateFu(
   fu = Math.ceil(fu / 10) * 10;
 
   // 鳴きがある場合は最低30符
-  if (hasMelds && fu < 30) {
+  if (hasOpenMelds && fu < 30) {
     fu = 30;
   }
 
@@ -1337,6 +1340,8 @@ export function calculateScore(
   const melds = options.melds || [];
   const meldTileCount = getMeldTileContribution(melds);
   const expectedHandSize = 14 - meldTileCount;
+  const hasOpenMelds = melds.some(meld => meld.type !== 'ankan');
+  const isMenzenHand = options.isMenzen && !hasOpenMelds;
 
   if (hand.length !== expectedHandSize - 1) {
     return { error: `手牌は${expectedHandSize - 1}枚必要です（鳴き${melds.length}回）` };
@@ -1353,7 +1358,7 @@ export function calculateScore(
   }
 
   // 役の判定
-  const yaku = detectYaku(fullHand, winningTile, options);
+  const yaku = detectYaku(fullHand, winningTile, { ...options, isMenzen: isMenzenHand });
 
   if (yaku.length === 0) {
     return { error: '役がありません' };
@@ -1364,7 +1369,7 @@ export function calculateScore(
   yaku.forEach(y => totalHan += y.han);
 
   // 符計算
-  const fu = calculateFu(fullHand, winningTile, options.isTsumo, options.isMenzen, options.bakaze, options.jikaze, melds);
+  const fu = calculateFu(fullHand, winningTile, options.isTsumo, isMenzenHand, options.bakaze, options.jikaze, melds);
 
   // 点数計算
   const score = calculateFinalScore(totalHan, fu, options.isOya, options.isTsumo);
