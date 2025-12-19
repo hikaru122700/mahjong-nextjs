@@ -204,6 +204,38 @@ function getMentsuPatterns(hand: Tile[]): MentsuPattern[] {
   }));
 }
 
+function getCompleteMentsuPatterns(hand: Tile[], melds?: Meld[]): MentsuPattern[] {
+  const openMelds = melds?.map(meld => [...meld.tiles]) ?? [];
+  if (openMelds.length === 0) {
+    return getMentsuPatterns(hand);
+  }
+
+  return getMentsuPatterns(hand).map(pattern => ({
+    jantou: pattern.jantou,
+    mentsu: [...pattern.mentsu, ...openMelds]
+  }));
+}
+
+function getAllTiles(hand: Tile[], melds?: Meld[]): Tile[] {
+  const tiles = [...hand];
+  melds?.forEach(meld => tiles.push(...meld.tiles));
+  return tiles;
+}
+
+function isHonorTile(tile: Tile): boolean {
+  return tile.length === 1;
+}
+
+function isTerminal(tile: Tile): boolean {
+  if (tile.length !== 2) return false;
+  const num = parseInt(tile[0]);
+  return num === 1 || num === 9;
+}
+
+function isTerminalOrHonor(tile: Tile): boolean {
+  return isHonorTile(tile) || isTerminal(tile);
+}
+
 function isShuntsu(tiles: Tile[]): boolean {
   if (tiles.length !== 3) return false;
   const sorted = sortHand(tiles);
@@ -378,6 +410,153 @@ function isPinfu(
     }
 
     return isRyanmenWait(hand, winningTile, pattern);
+  });
+}
+
+function isRyanpeikou(hand: Tile[], isMenzen: boolean): boolean {
+  if (!isMenzen) return false;
+  const patterns = getMentsuPatterns(hand);
+  return patterns.some(pattern => {
+    if (!pattern.mentsu.every(mentsu => isShuntsu(mentsu))) {
+      return false;
+    }
+    const counts: Record<string, number> = {};
+    pattern.mentsu.forEach(mentsu => {
+      const key = sortHand(mentsu).join(',');
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    let pairCount = 0;
+    Object.values(counts).forEach(count => {
+      pairCount += Math.floor(count / 2);
+    });
+    return pairCount >= 2;
+  });
+}
+
+function isIipeikou(hand: Tile[], isMenzen: boolean): boolean {
+  if (!isMenzen) return false;
+  const patterns = getMentsuPatterns(hand);
+  return patterns.some(pattern => {
+    const counts: Record<string, number> = {};
+    pattern.mentsu
+      .filter(mentsu => isShuntsu(mentsu))
+      .forEach(mentsu => {
+        const key = sortHand(mentsu).join(',');
+        counts[key] = (counts[key] || 0) + 1;
+      });
+    return Object.values(counts).some(count => count >= 2);
+  });
+}
+
+function isIttsuu(hand: Tile[], melds?: Meld[]): boolean {
+  const tiles = getAllTiles(hand, melds);
+  const suits: Array<'m' | 'p' | 's'> = ['m', 'p', 's'];
+  return suits.some(suit => {
+    for (let num = 1; num <= 9; num++) {
+      if (!tiles.some(tile => tile === `${num}${suit}`)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+function isSanshokuDoujun(hand: Tile[], melds?: Meld[]): boolean {
+  const patterns = getCompleteMentsuPatterns(hand, melds);
+  return patterns.some(pattern => {
+    const map: Record<string, Set<string>> = {};
+    pattern.mentsu.forEach(mentsu => {
+      if (mentsu.length === 3 && isShuntsu(mentsu)) {
+        const sorted = sortHand(mentsu);
+        const [, suit] = parseTile(sorted[0]);
+        if (!suit) {
+          return;
+        }
+        const numbers = sorted.map(tile => tile[0]).join('');
+        if (!map[numbers]) {
+          map[numbers] = new Set();
+        }
+        map[numbers].add(suit);
+      }
+    });
+    return Object.values(map).some(suits => suits.size === 3);
+  });
+}
+
+function isTerminalSequence(tiles: Tile[]): boolean {
+  if (!isShuntsu(tiles)) return false;
+  const sorted = sortHand(tiles);
+  const [firstNum] = parseTile(sorted[0]);
+  return firstNum === 1 || firstNum === 7;
+}
+
+function getGroupType(tileGroup: Tile[]): 'shuntsu' | 'koutsu' {
+  if (tileGroup.length === 3 && isShuntsu(tileGroup)) {
+    return 'shuntsu';
+  }
+  return 'koutsu';
+}
+
+function isChanta(hand: Tile[], melds?: Meld[]): boolean {
+  const patterns = getCompleteMentsuPatterns(hand, melds);
+  return patterns.some(pattern => {
+    if (!isTerminalOrHonor(pattern.jantou)) {
+      return false;
+    }
+
+    let hasHonor = isHonorTile(pattern.jantou);
+
+    for (const mentsu of pattern.mentsu) {
+      const type = getGroupType(mentsu);
+      if (type === 'shuntsu') {
+        if (!isTerminalSequence(mentsu)) {
+          return false;
+        }
+      } else {
+        if (!mentsu.every(tile => tile === mentsu[0])) {
+          return false;
+        }
+        if (!isTerminalOrHonor(mentsu[0])) {
+          return false;
+        }
+      }
+
+      if (mentsu.some(tile => isHonorTile(tile))) {
+        hasHonor = true;
+      }
+    }
+
+    return hasHonor;
+  });
+}
+
+function isJunchan(hand: Tile[], melds?: Meld[]): boolean {
+  const patterns = getCompleteMentsuPatterns(hand, melds);
+  return patterns.some(pattern => {
+    if (!isTerminal(pattern.jantou)) {
+      return false;
+    }
+
+    for (const mentsu of pattern.mentsu) {
+      const type = getGroupType(mentsu);
+      if (type === 'shuntsu') {
+        if (!isTerminalSequence(mentsu)) {
+          return false;
+        }
+        if (mentsu.some(tile => isHonorTile(tile))) {
+          return false;
+        }
+      } else {
+        if (!mentsu.every(tile => tile === mentsu[0])) {
+          return false;
+        }
+        if (!isTerminal(mentsu[0]) || isHonorTile(mentsu[0])) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   });
 }
 
@@ -821,6 +1000,23 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
     yaku.push({ name: '平和', han: 1 });
   }
 
+  // 二盃口（門前のみ）
+  if (!hasMelds && isRyanpeikou(hand, options.isMenzen)) {
+    yaku.push({ name: '二盃口', han: 3 });
+  } else if (!hasMelds && isIipeikou(hand, options.isMenzen)) {
+    yaku.push({ name: '一盃口', han: 1 });
+  }
+
+  // 一気通貫
+  if (isIttsuu(hand, melds)) {
+    yaku.push({ name: '一気通貫', han: hasMelds ? 1 : 2 });
+  }
+
+  // 三色同順
+  if (isSanshokuDoujun(hand, melds)) {
+    yaku.push({ name: '三色同順', han: hasMelds ? 1 : 2 });
+  }
+
   // 役牌
   const yakuhai = detectYakuhai(hand, options.bakaze, options.jikaze, melds);
   yaku.push(...yakuhai);
@@ -852,6 +1048,15 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   // 小三元
   if (isShouSangen(tileCounts)) {
     yaku.push({ name: '小三元', han: 2 });
+  }
+
+  // 純全帯么九
+  if (isJunchan(hand, melds)) {
+    yaku.push({ name: '純全帯么九', han: hasMelds ? 2 : 3 });
+  }
+  // 混全帯么九
+  else if (isChanta(hand, melds)) {
+    yaku.push({ name: '混全帯么九', han: hasMelds ? 1 : 2 });
   }
 
   // 混一色（鳴きがある場合は2翻）
