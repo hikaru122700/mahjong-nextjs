@@ -326,7 +326,126 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   return yaku;
 }
 
-export function calculateFu(hand: Tile[], winningTile: Tile, isTsumo: boolean, isMenzen: boolean): number {
+type WaitPattern = 'ryanmen' | 'shanpon' | 'penchan' | 'kanchan' | 'tanki';
+
+/**
+ * 待ち形を検出する
+ */
+function detectWaitPattern(hand: Tile[], winningTile: Tile): WaitPattern {
+  const tileCounts: Record<string, number> = {};
+  hand.forEach(tile => {
+    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
+  });
+
+  // 単騎待ち（雀頭になる待ち）
+  if (tileCounts[winningTile] === 2) {
+    return 'tanki';
+  }
+
+  // 双碰待ち（刻子になる待ち）
+  if (tileCounts[winningTile] === 3) {
+    return 'shanpon';
+  }
+
+  // 数牌の待ち形判定
+  const [num, suit] = parseTile(winningTile);
+  if (num && suit) {
+    const tile1 = `${num - 2}${suit}`;
+    const tile2 = `${num - 1}${suit}`;
+    const tile3 = `${num + 1}${suit}`;
+    const tile4 = `${num + 2}${suit}`;
+
+    // 辺張待ち
+    if (num === 3 && tileCounts[tile2] >= 1 && tileCounts[`${num - 2}${suit}`] >= 1) {
+      return 'penchan';
+    }
+    if (num === 7 && tileCounts[tile3] >= 1 && tileCounts[tile4] >= 1) {
+      return 'penchan';
+    }
+
+    // 嵌張待ち
+    if (num >= 2 && num <= 8) {
+      if (tileCounts[tile2] >= 1 && tileCounts[tile3] >= 1) {
+        // 中央の牌を引いた場合は嵌張の可能性
+        const hasSequence = (tileCounts[tile2] >= 1 && tileCounts[tile3] >= 1);
+        const hasRyanmen =
+          (num >= 3 && tileCounts[`${num - 2}${suit}`] >= 1 && tileCounts[tile2] >= 1) ||
+          (num <= 7 && tileCounts[tile3] >= 1 && tileCounts[`${num + 2}${suit}`] >= 1);
+
+        if (hasSequence && !hasRyanmen) {
+          return 'kanchan';
+        }
+      }
+    }
+
+    // 両面待ち（デフォルト）
+    return 'ryanmen';
+  }
+
+  // 字牌の場合はタンキかシャンポン
+  return 'tanki';
+}
+
+/**
+ * 暗刻を検出する（和了牌を考慮）
+ */
+function getConcealedTriplets(hand: Tile[], winningTile: Tile, isTsumo: boolean): Set<string> {
+  const tileCounts: Record<string, number> = {};
+  const handWithoutWinning = hand.filter(t => t !== winningTile);
+
+  // 和了牌を除いた手牌をカウント
+  handWithoutWinning.forEach(tile => {
+    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
+  });
+
+  const concealedTriplets = new Set<string>();
+
+  for (let tile in tileCounts) {
+    // ツモの場合、すべての3枚以上の組は暗刻
+    if (isTsumo && tileCounts[tile] >= 3) {
+      concealedTriplets.add(tile);
+    }
+    // ロンの場合、和了牌を含まない3枚の組のみ暗刻
+    else if (!isTsumo) {
+      if (tile === winningTile) {
+        // 和了牌が4枚ある場合は暗槓
+        if (tileCounts[tile] === 3) {
+          concealedTriplets.add(tile);
+        }
+        // 和了牌が含まれる刻子は明刻扱い（暗刻に含めない）
+      } else if (tileCounts[tile] >= 3) {
+        concealedTriplets.add(tile);
+      }
+    }
+  }
+
+  return concealedTriplets;
+}
+
+export function calculateFu(
+  hand: Tile[],
+  winningTile: Tile,
+  isTsumo: boolean,
+  isMenzen: boolean,
+  bakaze?: string,
+  jikaze?: string
+): number {
+  const tileCounts: Record<string, number> = {};
+  hand.forEach(tile => {
+    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
+  });
+
+  // 七対子は25符固定
+  const pairs = Object.values(tileCounts).filter(count => count === 2);
+  if (pairs.length === 7) {
+    return 25;
+  }
+
+  // 平和ツモは20符固定
+  if (isTsumo && isMenzen && isPinfu(hand, winningTile, isMenzen)) {
+    return 20;
+  }
+
   let fu = 20; // 基本符
 
   // ツモ符
@@ -335,40 +454,64 @@ export function calculateFu(hand: Tile[], winningTile: Tile, isTsumo: boolean, i
   // 門前ロン符
   if (!isTsumo && isMenzen) fu += 10;
 
-  // 雀頭符
-  const tileCounts: Record<string, number> = {};
-  hand.forEach(tile => {
-    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
-  });
+  // 雀頭符（役牌雀頭）
+  const bakazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+  const jikazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+  const bakazeTile = bakaze ? bakazeMap[bakaze] : null;
+  const jikazeTile = jikaze ? jikazeMap[jikaze] : null;
 
-  // 役牌雀頭
-  if (tileCounts['白'] === 2 || tileCounts['發'] === 2 || tileCounts['中'] === 2) {
-    fu += 2;
-  }
-
-  // 刻子符
   for (let tile in tileCounts) {
-    if (tileCounts[tile] >= 3) {
-      const isYaochuhai = tile.length === 1 || tile[0] === '1' || tile[0] === '9';
-      const isAnkou = true; // 簡易判定
-      if (isYaochuhai) {
-        fu += isAnkou ? 8 : 4;
-      } else {
-        fu += isAnkou ? 4 : 2;
+    if (tileCounts[tile] === 2) {
+      // 三元牌
+      if (tile === '白' || tile === '發' || tile === '中') {
+        fu += 2;
+      }
+      // 場風
+      else if (bakazeTile && tile === bakazeTile) {
+        fu += 2;
+      }
+      // 自風
+      else if (jikazeTile && tile === jikazeTile) {
+        fu += 2;
       }
     }
   }
 
-  // 待ち符（簡易的に辺張、嵌張、単騎の場合+2）
-  fu += 2;
+  // 刻子符
+  const concealedTriplets = getConcealedTriplets(hand, winningTile, isTsumo);
+
+  for (let tile in tileCounts) {
+    if (tileCounts[tile] >= 3) {
+      const isYaochuhai = tile.length === 1 || tile[0] === '1' || tile[0] === '9';
+      const isConcealed = concealedTriplets.has(tile);
+
+      // 槓子の場合
+      if (tileCounts[tile] === 4) {
+        if (isYaochuhai) {
+          fu += isConcealed ? 32 : 16;
+        } else {
+          fu += isConcealed ? 16 : 8;
+        }
+      }
+      // 刻子の場合
+      else {
+        if (isYaochuhai) {
+          fu += isConcealed ? 8 : 4;
+        } else {
+          fu += isConcealed ? 4 : 2;
+        }
+      }
+    }
+  }
+
+  // 待ち形符
+  const waitPattern = detectWaitPattern(hand, winningTile);
+  if (waitPattern === 'penchan' || waitPattern === 'kanchan' || waitPattern === 'tanki') {
+    fu += 2;
+  }
 
   // 符の繰り上げ（10符単位）
   fu = Math.ceil(fu / 10) * 10;
-
-  // 平和ツモは20符固定
-  if (isTsumo && isMenzen && fu === 20) {
-    return 20;
-  }
 
   return fu;
 }
@@ -440,7 +583,7 @@ export function calculateScore(
   yaku.forEach(y => totalHan += y.han);
 
   // 符計算
-  const fu = calculateFu(fullHand, winningTile, options.isTsumo, options.isMenzen);
+  const fu = calculateFu(fullHand, winningTile, options.isTsumo, options.isMenzen, options.bakaze, options.jikaze);
 
   // 点数計算
   const score = calculateFinalScore(totalHan, fu, options.jikaze === 'ton', options.isTsumo);
