@@ -242,6 +242,15 @@ export default function Home() {
     setActiveHistoryTab('hand');
   };
 
+  const toggleHistoryEntry = (entry: HistoryEntry) => {
+    if (activeHistoryId === entry.id) {
+      setActiveHistoryId(null);
+      setActiveHistoryTab('hand');
+      return;
+    }
+    restoreHistoryEntry(entry);
+  };
+
   // 鳴きの状態に応じて門前/リーチを制御（暗槓は門前扱い）
   useEffect(() => {
     const hasOpenMeld = melds.some(meld => meld.type !== 'ankan');
@@ -1065,8 +1074,8 @@ export default function Home() {
                       {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}
                     </div>
                   </div>
-                  <button className="btn btn-secondary" onClick={() => restoreHistoryEntry(entry)}>
-                    この手を再表示
+                  <button className="btn btn-secondary" onClick={() => toggleHistoryEntry(entry)}>
+                    {isActive ? 'この手を非表示' : 'この手を再表示'}
                   </button>
                   {isActive && (
                     <div className="history-detail" style={{ marginTop: '12px', background: '#f8f8ff', padding: '12px', borderRadius: '8px' }}>
