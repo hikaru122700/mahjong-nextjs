@@ -23,6 +23,13 @@ export interface AgariOptions {
   melds?: Meld[];
   isTenhou?: boolean;
   isChiihou?: boolean;
+  doraTiles?: Tile[];
+  uraDoraTiles?: Tile[];
+  redDora?: {
+    man: number;
+    pin: number;
+    sou: number;
+  };
 }
 
 export interface CalculationResult {
@@ -221,6 +228,54 @@ function getAllTiles(hand: Tile[], melds?: Meld[]): Tile[] {
   const tiles = [...hand];
   melds?.forEach(meld => tiles.push(...meld.tiles));
   return tiles;
+}
+
+function countTargetTiles(counts: Record<string, number>, targets?: Tile[]): number {
+  if (!targets || targets.length === 0) {
+    return 0;
+  }
+  return targets.reduce((sum, tile) => sum + (counts[tile] || 0), 0);
+}
+
+function countRedDora(counts: Record<string, number>, redOptions?: { man: number; pin: number; sou: number }): number {
+  if (!redOptions) {
+    return 0;
+  }
+  let total = 0;
+  if (redOptions.man) {
+    total += Math.min(redOptions.man, counts['5m'] || 0);
+  }
+  if (redOptions.pin) {
+    total += Math.min(redOptions.pin, counts['5p'] || 0);
+  }
+  if (redOptions.sou) {
+    total += Math.min(redOptions.sou, counts['5s'] || 0);
+  }
+  return total;
+}
+
+function buildDoraYaku(allTiles: Tile[], options: AgariOptions): Yaku[] {
+  const counts = countTiles(allTiles);
+  const bonus: Yaku[] = [];
+
+  const doraCount = countTargetTiles(counts, options.doraTiles);
+  if (doraCount > 0) {
+    bonus.push({ name: `ドラ${doraCount}`, han: doraCount });
+  }
+
+  if (options.isRiichi) {
+    const uraCount = countTargetTiles(counts, options.uraDoraTiles);
+    if (uraCount > 0) {
+      bonus.push({ name: `裏ドラ${uraCount}`, han: uraCount });
+    }
+  }
+
+  const redCount = countRedDora(counts, options.redDora);
+  if (redCount > 0) {
+    bonus.push({ name: `赤ドラ${redCount}`, han: redCount });
+  }
+
+  return bonus;
 }
 
 function getMeldTileContribution(melds?: Meld[]): number {
@@ -1358,11 +1413,16 @@ export function calculateScore(
   }
 
   // 役の判定
-  const yaku = detectYaku(fullHand, winningTile, { ...options, isMenzen: isMenzenHand });
+  const adjustedOptions: AgariOptions = { ...options, isMenzen: isMenzenHand };
+  const yaku = detectYaku(fullHand, winningTile, adjustedOptions);
 
   if (yaku.length === 0) {
     return { error: '役がありません' };
   }
+
+  const allTilesForBonus = getAllTiles(fullHand, melds);
+  const doraBonus = buildDoraYaku(allTilesForBonus, adjustedOptions);
+  yaku.push(...doraBonus);
 
   // 翻数計算
   let totalHan = 0;
