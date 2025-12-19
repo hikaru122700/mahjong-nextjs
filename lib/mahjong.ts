@@ -55,6 +55,26 @@ export const TILE_ORDER: Record<string, number> = {
   '東': 31, '南': 32, '西': 33, '北': 34, '白': 35, '發': 36, '中': 37
 };
 
+const BAKAZE_MAP: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+const JIKAZE_MAP: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+
+type HandMeldType = 'shuntsu' | 'koutsu' | 'kantsu';
+
+interface HandMeld {
+  type: HandMeldType;
+  tiles: Tile[];
+}
+
+interface HandShape {
+  pair: Tile;
+  melds: HandMeld[];
+}
+
+interface MentsuPattern {
+  jantou: Tile;
+  mentsu: Tile[][];
+}
+
 export function sortHand(tiles: Tile[]): Tile[] {
   return [...tiles].sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
 }
@@ -66,6 +86,178 @@ function parseTile(tile: Tile): [number | null, string | null] {
     return [num, suit];
   }
   return [null, null];
+}
+
+function countTiles(tiles: Tile[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  tiles.forEach(tile => {
+    counts[tile] = (counts[tile] || 0) + 1;
+  });
+  return counts;
+}
+
+function isYakuhai(tile: Tile, bakaze?: string, jikaze?: string): boolean {
+  if (tile === '白' || tile === '發' || tile === '中') {
+    return true;
+  }
+
+  if (bakaze && BAKAZE_MAP[bakaze] && tile === BAKAZE_MAP[bakaze]) {
+    return true;
+  }
+
+  if (jikaze && JIKAZE_MAP[jikaze] && tile === JIKAZE_MAP[jikaze]) {
+    return true;
+  }
+
+  return false;
+}
+
+function serializeCounts(counts: Record<string, number>): string {
+  return Object.keys(counts)
+    .sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b])
+    .map(key => `${key}:${counts[key]}`)
+    .join('|');
+}
+
+function generateMeldCombinations(
+  counts: Record<string, number>,
+  memo: Map<string, HandMeld[][]> = new Map()
+): HandMeld[][] {
+  const remainingTiles = Object.values(counts).reduce((sum, c) => sum + c, 0);
+  if (remainingTiles === 0) return [[]];
+
+  const memoKey = serializeCounts(counts);
+  if (memo.has(memoKey)) {
+    return memo.get(memoKey)!;
+  }
+
+  const tiles = Object.keys(counts)
+    .filter(tile => counts[tile] > 0)
+    .sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
+
+  const targetTile = tiles[0];
+  const results: HandMeld[][] = [];
+
+  // 刻子
+  if (counts[targetTile] >= 3) {
+    const updated = { ...counts, [targetTile]: counts[targetTile] - 3 };
+    generateMeldCombinations(updated, memo).forEach(melds => {
+      results.push([{ type: 'koutsu', tiles: [targetTile, targetTile, targetTile] }, ...melds]);
+    });
+  }
+
+  // 順子
+  const [num, suit] = parseTile(targetTile);
+  if (num && suit && num <= 7) {
+    const tile2 = `${num + 1}${suit}`;
+    const tile3 = `${num + 2}${suit}`;
+    if ((counts[tile2] || 0) > 0 && (counts[tile3] || 0) > 0) {
+      const updated = { ...counts };
+      updated[targetTile]--;
+      updated[tile2]--;
+      updated[tile3]--;
+      generateMeldCombinations(updated, memo).forEach(melds => {
+        results.push([{ type: 'shuntsu', tiles: [targetTile, tile2, tile3] }, ...melds]);
+      });
+    }
+  }
+
+  memo.set(memoKey, results);
+  return results;
+}
+
+function serializeHandShape(shape: HandShape): string {
+  const meldKey = shape.melds
+    .map(m => `${m.type}:${sortHand(m.tiles).join(',')}`)
+    .sort()
+    .join('|');
+  return `${shape.pair}|${meldKey}`;
+}
+
+function buildHandShapes(hand: Tile[]): HandShape[] {
+  const counts = countTiles(hand);
+  const shapes: HandShape[] = [];
+  const seen = new Set<string>();
+
+  Object.keys(counts).forEach(tile => {
+    if (counts[tile] >= 2) {
+      const remaining = { ...counts, [tile]: counts[tile] - 2 };
+      const meldOptions = generateMeldCombinations(remaining);
+      meldOptions.forEach(melds => {
+        const shape: HandShape = { pair: tile, melds };
+        const key = serializeHandShape(shape);
+        if (!seen.has(key)) {
+          seen.add(key);
+          shapes.push(shape);
+        }
+      });
+    }
+  });
+
+  return shapes;
+}
+
+function getMentsuPatterns(hand: Tile[]): MentsuPattern[] {
+  return buildHandShapes(hand).map(shape => ({
+    jantou: shape.pair,
+    mentsu: shape.melds.map(meld => [...meld.tiles])
+  }));
+}
+
+function isShuntsu(tiles: Tile[]): boolean {
+  if (tiles.length !== 3) return false;
+  const sorted = sortHand(tiles);
+  const [num1, suit1] = parseTile(sorted[0]);
+  const [num2, suit2] = parseTile(sorted[1]);
+  const [num3, suit3] = parseTile(sorted[2]);
+
+  if (num1 === null || num2 === null || num3 === null) return false;
+  if (suit1 !== suit2 || suit2 !== suit3) return false;
+
+  return num2 === num1 + 1 && num3 === num2 + 1;
+}
+
+function isRyanmenWait(
+  hand: Tile[],
+  winningTile: Tile,
+  targetPattern?: MentsuPattern
+): boolean {
+  const patterns = targetPattern ? [targetPattern] : getMentsuPatterns(hand);
+  return patterns.some(pattern => isRyanmenWaitForPattern(pattern, winningTile));
+}
+
+function isRyanmenWaitForPattern(pattern: MentsuPattern, winningTile: Tile): boolean {
+  if (pattern.jantou === winningTile) return false;
+
+  const targetMentsu = pattern.mentsu.find(mentsu => mentsu.includes(winningTile));
+  if (!targetMentsu || targetMentsu.length !== 3) {
+    return false;
+  }
+
+  if (!isShuntsu(targetMentsu)) {
+    return false;
+  }
+
+  const sorted = sortHand(targetMentsu);
+  const isLowest = winningTile === sorted[0];
+  const isHighest = winningTile === sorted[2];
+
+  if (!isLowest && !isHighest) {
+    return false;
+  }
+
+  const [firstNum] = parseTile(sorted[0]);
+  const [thirdNum] = parseTile(sorted[2]);
+
+  if (firstNum === null || thirdNum === null) {
+    return false;
+  }
+
+  if ((isHighest && firstNum === 1) || (isLowest && thirdNum === 9)) {
+    return false;
+  }
+
+  return true;
 }
 
 function checkMentsu(tiles: Record<string, number>, count: number): boolean {
@@ -161,10 +353,32 @@ function isTanyao(hand: Tile[], melds?: Meld[]): boolean {
   });
 }
 
-function isPinfu(hand: Tile[], winningTile: Tile, isMenzen: boolean): boolean {
+function isPinfu(
+  hand: Tile[],
+  winningTile: Tile,
+  isMenzen: boolean,
+  bakaze?: string,
+  jikaze?: string
+): boolean {
   if (!isMenzen) return false;
-  const hasJihai = hand.some(tile => tile.length === 1);
-  return !hasJihai && isTanyao(hand);
+
+  const patterns = getMentsuPatterns(hand);
+  if (patterns.length === 0) {
+    return false;
+  }
+
+  return patterns.some(pattern => {
+    const hasOnlyShuntsu = pattern.mentsu.every(mentsu => isShuntsu(mentsu));
+    if (!hasOnlyShuntsu) {
+      return false;
+    }
+
+    if (isYakuhai(pattern.jantou, bakaze, jikaze)) {
+      return false;
+    }
+
+    return isRyanmenWait(hand, winningTile, pattern);
+  });
 }
 
 function detectYakuhai(hand: Tile[], bakaze: string, jikaze: string, melds?: Meld[]): Yaku[] {
@@ -603,7 +817,7 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   }
 
   // 平和（ピンフ）- 門前のみ
-  if (isPinfu(hand, winningTile, options.isMenzen) && !hasMelds) {
+  if (isPinfu(hand, winningTile, options.isMenzen, options.bakaze, options.jikaze) && !hasMelds) {
     yaku.push({ name: '平和', han: 1 });
   }
 
@@ -770,7 +984,7 @@ export function calculateFu(
   }
 
   // 平和ツモは20符固定
-  if (isTsumo && isMenzen && isPinfu(hand, winningTile, isMenzen)) {
+  if (isTsumo && isMenzen && isPinfu(hand, winningTile, isMenzen, bakaze, jikaze)) {
     return 20;
   }
 
