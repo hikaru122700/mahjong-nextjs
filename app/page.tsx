@@ -13,6 +13,9 @@ import {
   type CalculationResult
 } from '@/lib/mahjong';
 
+const getMeldTileCount = (meldList: Meld[]): number =>
+  meldList.reduce((sum, meld) => sum + (meld.tiles.length === 4 ? 3 : meld.tiles.length), 0);
+
 export default function Home() {
   const [hand, setHand] = useState<Tile[]>([]);
   const [winningTile, setWinningTile] = useState<Tile | null>(null);
@@ -39,7 +42,7 @@ export default function Home() {
   }, [melds]);
 
   const addTileToHand = (tile: Tile) => {
-    const meldTileCount = melds.reduce((sum, m) => sum + m.tiles.length, 0);
+    const meldTileCount = getMeldTileCount(melds);
     const maxHandSize = 14 - meldTileCount - 1;
 
     if (hand.length >= maxHandSize) {
@@ -204,7 +207,7 @@ export default function Home() {
       <div className="section">
         <div className="section-title">現在の手牌</div>
         <div className="hand-display">
-          <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - melds.reduce((sum, m) => sum + m.tiles.length, 0) - 1}枚)</div>
+          <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - getMeldTileCount(melds) - 1}枚)</div>
           <div className="hand-tiles">
             {hand.map((tile, index) => (
               <div

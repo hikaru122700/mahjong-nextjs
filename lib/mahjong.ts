@@ -222,6 +222,11 @@ function getAllTiles(hand: Tile[], melds?: Meld[]): Tile[] {
   return tiles;
 }
 
+function getMeldTileContribution(melds?: Meld[]): number {
+  if (!melds) return 0;
+  return melds.reduce((sum, meld) => sum + (meld.tiles.length === 4 ? 3 : meld.tiles.length), 0);
+}
+
 function isHonorTile(tile: Tile): boolean {
   return tile.length === 1;
 }
@@ -1329,7 +1334,7 @@ export function calculateScore(
   options: AgariOptions
 ): CalculationResult | { error: string } {
   const melds = options.melds || [];
-  const meldTileCount = melds.reduce((sum, meld) => sum + meld.tiles.length, 0);
+  const meldTileCount = getMeldTileContribution(melds);
   const expectedHandSize = 14 - meldTileCount;
 
   if (hand.length !== expectedHandSize - 1) {
