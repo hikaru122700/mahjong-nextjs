@@ -13,6 +13,8 @@ import {
   type CalculationResult
 } from '@/lib/mahjong';
 
+const ALL_TILES: Tile[] = [...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai];
+
 const getMeldTileCount = (meldList: Meld[]): number =>
   meldList.reduce((sum, meld) => sum + (meld.tiles.length === 4 ? 3 : meld.tiles.length), 0);
 
@@ -33,6 +35,15 @@ export default function Home() {
   const [meldType, setMeldType] = useState<MeldType>('chii');
   const [isTenhou, setIsTenhou] = useState<boolean>(false);
   const [isChiihou, setIsChiihou] = useState<boolean>(false);
+  const [doraTiles, setDoraTiles] = useState<Tile[]>([]);
+  const [uraDoraTiles, setUraDoraTiles] = useState<Tile[]>([]);
+  const [doraSelect, setDoraSelect] = useState<Tile>(ALL_TILES[0]);
+  const [uraDoraSelect, setUraDoraSelect] = useState<Tile>(ALL_TILES[0]);
+  const [akaDora, setAkaDora] = useState<{ man: boolean; pin: boolean; sou: boolean }>({
+    man: false,
+    pin: false,
+    sou: false
+  });
 
   const getAllSelectedTiles = (options?: { includeWinningTile?: boolean }) => {
     const tiles: Tile[] = [...hand];
@@ -51,6 +62,47 @@ export default function Home() {
       return true;
     }
     return false;
+  };
+
+  const addDoraTileValue = (type: 'dora' | 'ura') => {
+    const target = type === 'dora' ? doraTiles : uraDoraTiles;
+    const setter = type === 'dora' ? setDoraTiles : setUraDoraTiles;
+    const selectedTile = type === 'dora' ? doraSelect : uraDoraSelect;
+
+    if (type === 'ura' && !riichi) {
+      setError('裏ドラはリーチ時のみ設定できます');
+      return;
+    }
+
+    if (target.length >= 4) {
+      setError('各ドラは最大4枚まで設定できます');
+      return;
+    }
+
+    setter([...target, selectedTile]);
+    setError('');
+  };
+
+  const removeDoraTileValue = (index: number, type: 'dora' | 'ura') => {
+    const target = type === 'dora' ? doraTiles : uraDoraTiles;
+    const setter = type === 'dora' ? setDoraTiles : setUraDoraTiles;
+    const updated = [...target];
+    updated.splice(index, 1);
+    setter(updated);
+  };
+
+  const toggleAkaDora = (type: 'man' | 'pin' | 'sou') => {
+    const nextValue = !akaDora[type];
+    if (nextValue) {
+      const targetTile: Tile = type === 'man' ? '5m' : type === 'pin' ? '5p' : '5s';
+      const available = getAllSelectedTiles().filter(t => t === targetTile).length;
+      if (available === 0) {
+        setError(`${TILE_DISPLAY[targetTile]}を手牌または鳴きに含めてください`);
+        return;
+      }
+    }
+    setAkaDora(prev => ({ ...prev, [type]: nextValue }));
+    setError('');
   };
 
   // 鳴きの状態に応じて門前/リーチを制御（暗槓は門前扱い）
@@ -144,6 +196,11 @@ export default function Home() {
     setMelds([]);
     setMeldInput([]);
     setIsDealer(true);
+    setDoraTiles([]);
+    setUraDoraTiles([]);
+    setAkaDora({ man: false, pin: false, sou: false });
+    setDoraSelect(ALL_TILES[0]);
+    setUraDoraSelect(ALL_TILES[0]);
   };
 
   const handleCalculate = () => {
@@ -162,7 +219,14 @@ export default function Home() {
       isOya: isDealer,
       melds: melds.length > 0 ? melds : undefined,
       isTenhou,
-      isChiihou
+      isChiihou,
+      doraTiles,
+      uraDoraTiles: riichi ? uraDoraTiles : [],
+      redDora: {
+        man: akaDora.man ? 1 : 0,
+        pin: akaDora.pin ? 1 : 0,
+        sou: akaDora.sou ? 1 : 0
+      }
     };
 
     const calcResult = calculateScore(hand, winningTile, options);
@@ -582,6 +646,99 @@ export default function Home() {
                 />
                 地和（子の第一ツモ和了）
               </label>
+            </div>
+          </div>
+          <div className="option-group">
+            <div className="option-title">ドラ設定</div>
+            <div className="dora-block">
+              <div className="option-subtitle">表示ドラ</div>
+              <div className="hand-tiles">
+                {doraTiles.length === 0 && <div className="info-text">未設定</div>}
+                {doraTiles.map((tile, index) => (
+                  <div
+                    key={`${tile}-${index}`}
+                    className="hand-tile"
+                    onClick={() => removeDoraTileValue(index, 'dora')}
+                  >
+                    {TILE_DISPLAY[tile]}
+                  </div>
+                ))}
+              </div>
+              <div className="option-group" style={{ marginTop: '8px' }}>
+                <select value={doraSelect} onChange={(e) => setDoraSelect(e.target.value as Tile)}>
+                  {ALL_TILES.map(tile => (
+                    <option key={tile} value={tile}>
+                      {TILE_DISPLAY[tile]}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn" style={{ marginLeft: '8px' }} onClick={() => addDoraTileValue('dora')}>
+                  追加
+                </button>
+              </div>
+            </div>
+            <div className="dora-block" style={{ marginTop: '10px' }}>
+              <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
+              <div className="hand-tiles">
+                {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
+                {uraDoraTiles.map((tile, index) => (
+                  <div
+                    key={`${tile}-ura-${index}`}
+                    className="hand-tile"
+                    onClick={() => removeDoraTileValue(index, 'ura')}
+                  >
+                    {TILE_DISPLAY[tile]}
+                  </div>
+                ))}
+              </div>
+              <div className="option-group" style={{ marginTop: '8px' }}>
+                <select value={uraDoraSelect} onChange={(e) => setUraDoraSelect(e.target.value as Tile)}>
+                  {ALL_TILES.map(tile => (
+                    <option key={tile} value={tile}>
+                      {TILE_DISPLAY[tile]}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn"
+                  style={{ marginLeft: '8px' }}
+                  onClick={() => addDoraTileValue('ura')}
+                  disabled={!riichi}
+                >
+                  追加
+                </button>
+              </div>
+              {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
+            </div>
+            <div className="dora-block" style={{ marginTop: '10px' }}>
+              <div className="option-subtitle">赤ドラ</div>
+              <div className="checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={akaDora.man}
+                    onChange={() => toggleAkaDora('man')}
+                  />
+                  赤5m
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={akaDora.pin}
+                    onChange={() => toggleAkaDora('pin')}
+                  />
+                  赤5p
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={akaDora.sou}
+                    onChange={() => toggleAkaDora('sou')}
+                  />
+                  赤5s
+                </label>
+              </div>
+              <div className="info-text">※ 対応する5の牌が手牌/鳴きに含まれている必要があります。</div>
             </div>
           </div>
         </div>

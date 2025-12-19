@@ -55,6 +55,30 @@ describe('mahjong scoring', () => {
     expect(result.score).toBe('1600点');
     expect(result.yaku.map(y => y.name)).toContain('七対子');
   });
+
+  it('applies dora bonuses when configured', () => {
+    const hand: Tile[] = ['2m', '3m', '4m', '5p', '6p', '7p', '2s', '3s', '4s', '6s', '7s', '8s', '5m'];
+    const winningTile: Tile = '5m';
+
+    const options: AgariOptions = {
+      ...baseOptions,
+      isRiichi: true,
+      doraTiles: ['5m'],
+      uraDoraTiles: ['2s'],
+      redDora: { man: 1, pin: 0, sou: 0 },
+    };
+
+    const result = calculateScore(hand, winningTile, options);
+
+    if ('error' in result) {
+      throw new Error(result.error);
+    }
+
+    const yakuNames = result.yaku.map(y => y.name);
+    expect(yakuNames).toContain('ドラ2');
+    expect(yakuNames).toContain('裏ドラ1');
+    expect(yakuNames).toContain('赤ドラ1');
+  });
 });
 
 describe('yaku detection', () => {
