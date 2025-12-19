@@ -341,35 +341,30 @@ function isRyanmenWait(
 function isRyanmenWaitForPattern(pattern: MentsuPattern, winningTile: Tile): boolean {
   if (pattern.jantou === winningTile) return false;
 
-  const targetMentsu = pattern.mentsu.find(mentsu => mentsu.includes(winningTile));
-  if (!targetMentsu || targetMentsu.length !== 3) {
-    return false;
-  }
+  const targetMentsuList = pattern.mentsu.filter(mentsu => mentsu.includes(winningTile));
+  if (targetMentsuList.length === 0) return false;
 
-  if (!isShuntsu(targetMentsu)) {
-    return false;
-  }
+  return targetMentsuList.some(mentsu => {
+    if (mentsu.length !== 3) return false;
+    if (!isShuntsu(mentsu)) return false;
 
-  const sorted = sortHand(targetMentsu);
-  const isLowest = winningTile === sorted[0];
-  const isHighest = winningTile === sorted[2];
+    const sorted = sortHand(mentsu);
+    const isLowest = winningTile === sorted[0];
+    const isHighest = winningTile === sorted[2];
 
-  if (!isLowest && !isHighest) {
-    return false;
-  }
+    if (!isLowest && !isHighest) return false;
 
-  const [firstNum] = parseTile(sorted[0]);
-  const [thirdNum] = parseTile(sorted[2]);
+    const [firstNum] = parseTile(sorted[0]);
+    const [thirdNum] = parseTile(sorted[2]);
 
-  if (firstNum === null || thirdNum === null) {
-    return false;
-  }
+    if (firstNum === null || thirdNum === null) return false;
 
-  if ((isHighest && firstNum === 1) || (isLowest && thirdNum === 9)) {
-    return false;
-  }
+    if ((isHighest && firstNum === 1) || (isLowest && thirdNum === 9)) {
+      return false;
+    }
 
-  return true;
+    return true;
+  });
 }
 
 function checkMentsu(tiles: Record<string, number>, count: number): boolean {
