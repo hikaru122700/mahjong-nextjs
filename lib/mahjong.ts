@@ -45,6 +45,21 @@ export const TILE_ORDER: Record<string, number> = {
   '東': 31, '南': 32, '西': 33, '北': 34, '白': 35, '發': 36, '中': 37
 };
 
+const BAKAZE_MAP: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+const JIKAZE_MAP: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
+
+type MeldType = 'shuntsu' | 'koutsu' | 'kantsu';
+
+interface Meld {
+  type: MeldType;
+  tiles: Tile[];
+}
+
+interface HandShape {
+  pair: Tile;
+  melds: Meld[];
+}
+
 export function sortHand(tiles: Tile[]): Tile[] {
   return [...tiles].sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
 }
@@ -56,6 +71,112 @@ function parseTile(tile: Tile): [number | null, string | null] {
     return [num, suit];
   }
   return [null, null];
+}
+
+function countTiles(tiles: Tile[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  tiles.forEach(tile => {
+    counts[tile] = (counts[tile] || 0) + 1;
+  });
+  return counts;
+}
+
+function isYaochuhai(tile: Tile): boolean {
+  if (tile.length === 1) return true;
+  const num = parseInt(tile[0]);
+  return num === 1 || num === 9;
+}
+
+function isValueTile(tile: Tile, bakazeTile?: string | null, jikazeTile?: string | null): boolean {
+  if (tile === '白' || tile === '發' || tile === '中') return true;
+  if (bakazeTile && tile === bakazeTile) return true;
+  if (jikazeTile && tile === jikazeTile) return true;
+  return false;
+}
+
+function serializeCounts(counts: Record<string, number>): string {
+  return Object.keys(counts)
+    .sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b])
+    .map(key => `${key}:${counts[key]}`)
+    .join('|');
+}
+
+function generateMeldCombinations(
+  counts: Record<string, number>,
+  memo: Map<string, Meld[][]> = new Map()
+): Meld[][] {
+  const remainingTiles = Object.values(counts).reduce((sum, c) => sum + c, 0);
+  if (remainingTiles === 0) return [[]];
+
+  const memoKey = serializeCounts(counts);
+  if (memo.has(memoKey)) {
+    return memo.get(memoKey)!;
+  }
+
+  const tiles = Object.keys(counts)
+    .filter(tile => counts[tile] > 0)
+    .sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
+
+  const targetTile = tiles[0];
+  const results: Meld[][] = [];
+
+  // 刻子
+  if (counts[targetTile] >= 3) {
+    const updated = { ...counts, [targetTile]: counts[targetTile] - 3 };
+    generateMeldCombinations(updated, memo).forEach(melds => {
+      results.push([{ type: 'koutsu', tiles: [targetTile, targetTile, targetTile] }, ...melds]);
+    });
+  }
+
+  // 順子
+  const [num, suit] = parseTile(targetTile);
+  if (num && suit && num <= 7) {
+    const tile2 = `${num + 1}${suit}`;
+    const tile3 = `${num + 2}${suit}`;
+    if ((counts[tile2] || 0) > 0 && (counts[tile3] || 0) > 0) {
+      const updated = { ...counts };
+      updated[targetTile]--;
+      updated[tile2]--;
+      updated[tile3]--;
+      generateMeldCombinations(updated, memo).forEach(melds => {
+        results.push([{ type: 'shuntsu', tiles: [targetTile, tile2, tile3] }, ...melds]);
+      });
+    }
+  }
+
+  memo.set(memoKey, results);
+  return results;
+}
+
+function serializeHandShape(shape: HandShape): string {
+  const meldKey = shape.melds
+    .map(m => `${m.type}:${sortHand(m.tiles).join(',')}`)
+    .sort()
+    .join('|');
+  return `${shape.pair}|${meldKey}`;
+}
+
+function buildHandShapes(hand: Tile[]): HandShape[] {
+  const counts = countTiles(hand);
+  const shapes: HandShape[] = [];
+  const seen = new Set<string>();
+
+  Object.keys(counts).forEach(tile => {
+    if (counts[tile] >= 2) {
+      const remaining = { ...counts, [tile]: counts[tile] - 2 };
+      const meldOptions = generateMeldCombinations(remaining);
+      meldOptions.forEach(melds => {
+        const shape: HandShape = { pair: tile, melds };
+        const key = serializeHandShape(shape);
+        if (!seen.has(key)) {
+          seen.add(key);
+          shapes.push(shape);
+        }
+      });
+    }
+  });
+
+  return shapes;
 }
 
 function checkMentsu(tiles: Record<string, number>, count: number): boolean {
@@ -140,10 +261,18 @@ function isTanyao(hand: Tile[]): boolean {
   });
 }
 
-function isPinfu(hand: Tile[], winningTile: Tile, isMenzen: boolean): boolean {
+function isPinfu(hand: Tile[], winningTile: Tile, isMenzen: boolean, bakaze?: string, jikaze?: string): boolean {
   if (!isMenzen) return false;
-  const hasJihai = hand.some(tile => tile.length === 1);
-  return !hasJihai && isTanyao(hand);
+  const shapes = buildHandShapes(hand);
+  const bakazeTile = bakaze ? BAKAZE_MAP[bakaze] : null;
+  const jikazeTile = jikaze ? JIKAZE_MAP[jikaze] : null;
+
+  return shapes.some(shape => {
+    const wait = detectWaitPattern(shape, winningTile);
+    if (wait !== 'ryanmen') return false;
+    if (isValueTile(shape.pair, bakazeTile, jikazeTile)) return false;
+    return shape.melds.every(m => m.type === 'shuntsu');
+  });
 }
 
 function detectYakuhai(hand: Tile[], bakaze: string, jikaze: string): Yaku[] {
@@ -159,10 +288,8 @@ function detectYakuhai(hand: Tile[], bakaze: string, jikaze: string): Yaku[] {
   if (tileCounts['中'] >= 3) yaku.push({ name: '中', han: 1 });
 
   // 場風と自風
-  const bakazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西' };
-  const jikazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
-  const bakazeTile = bakazeMap[bakaze];
-  const jikazeTile = jikazeMap[jikaze];
+  const bakazeTile = BAKAZE_MAP[bakaze];
+  const jikazeTile = JIKAZE_MAP[jikaze];
 
   // 場風と自風が同じ場合は2翻
   if (bakazeTile === jikazeTile && tileCounts[bakazeTile] >= 3) {
@@ -278,7 +405,7 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   }
 
   // 平和（ピンフ）
-  if (isPinfu(hand, winningTile, options.isMenzen)) {
+  if (isPinfu(hand, winningTile, options.isMenzen, options.bakaze, options.jikaze)) {
     yaku.push({ name: '平和', han: 1 });
   }
 
@@ -329,97 +456,84 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
 type WaitPattern = 'ryanmen' | 'shanpon' | 'penchan' | 'kanchan' | 'tanki';
 
 /**
- * 待ち形を検出する
+ * 待ち形を手牌の構成から判定する
  */
-function detectWaitPattern(hand: Tile[], winningTile: Tile): WaitPattern {
-  const tileCounts: Record<string, number> = {};
-  hand.forEach(tile => {
-    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
-  });
-
-  // 単騎待ち（雀頭になる待ち）
-  if (tileCounts[winningTile] === 2) {
+function detectWaitPattern(shape: HandShape, winningTile: Tile): WaitPattern {
+  if (shape.pair === winningTile) {
     return 'tanki';
   }
 
-  // 双碰待ち（刻子になる待ち）
-  if (tileCounts[winningTile] === 3) {
+  const meld = shape.melds.find(m => m.tiles.includes(winningTile));
+  if (!meld) return 'tanki';
+
+  if (meld.type === 'koutsu' || meld.type === 'kantsu') {
     return 'shanpon';
   }
 
-  // 数牌の待ち形判定
-  const [num, suit] = parseTile(winningTile);
-  if (num && suit) {
-    const tile1 = `${num - 2}${suit}`;
-    const tile2 = `${num - 1}${suit}`;
-    const tile3 = `${num + 1}${suit}`;
-    const tile4 = `${num + 2}${suit}`;
+  const sorted = sortHand(meld.tiles);
+  const [startNum] = parseTile(sorted[0]);
+  const [winNum] = parseTile(winningTile);
 
-    // 辺張待ち
-    if (num === 3 && tileCounts[tile2] >= 1 && tileCounts[`${num - 2}${suit}`] >= 1) {
-      return 'penchan';
-    }
-    if (num === 7 && tileCounts[tile3] >= 1 && tileCounts[tile4] >= 1) {
-      return 'penchan';
-    }
-
-    // 嵌張待ち
-    if (num >= 2 && num <= 8) {
-      if (tileCounts[tile2] >= 1 && tileCounts[tile3] >= 1) {
-        // 中央の牌を引いた場合は嵌張の可能性
-        const hasSequence = (tileCounts[tile2] >= 1 && tileCounts[tile3] >= 1);
-        const hasRyanmen =
-          (num >= 3 && tileCounts[`${num - 2}${suit}`] >= 1 && tileCounts[tile2] >= 1) ||
-          (num <= 7 && tileCounts[tile3] >= 1 && tileCounts[`${num + 2}${suit}`] >= 1);
-
-        if (hasSequence && !hasRyanmen) {
-          return 'kanchan';
-        }
-      }
-    }
-
-    // 両面待ち（デフォルト）
-    return 'ryanmen';
+  if (startNum === null || winNum === null) {
+    return 'tanki';
   }
 
-  // 字牌の場合はタンキかシャンポン
-  return 'tanki';
+  if (winNum === startNum + 1) {
+    return 'kanchan';
+  }
+
+  if ((startNum === 1 && winNum === 3) || (startNum === 7 && winNum === 7)) {
+    return 'penchan';
+  }
+
+  return 'ryanmen';
 }
 
-/**
- * 暗刻を検出する（和了牌を考慮）
- */
-function getConcealedTriplets(hand: Tile[], winningTile: Tile, isTsumo: boolean): Set<string> {
-  const tileCounts: Record<string, number> = {};
-  const handWithoutWinning = hand.filter(t => t !== winningTile);
+function isPinfuShape(
+  shape: HandShape,
+  waitPattern: WaitPattern,
+  isMenzen: boolean,
+  bakazeTile?: string | null,
+  jikazeTile?: string | null
+): boolean {
+  if (!isMenzen) return false;
+  if (waitPattern !== 'ryanmen') return false;
+  if (isValueTile(shape.pair, bakazeTile, jikazeTile)) return false;
+  return shape.melds.every(m => m.type === 'shuntsu');
+}
 
-  // 和了牌を除いた手牌をカウント
-  handWithoutWinning.forEach(tile => {
-    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
-  });
+function calculateHeadFu(pair: Tile, bakazeTile?: string | null, jikazeTile?: string | null): number {
+  return isValueTile(pair, bakazeTile, jikazeTile) ? 2 : 0;
+}
 
-  const concealedTriplets = new Set<string>();
+function waitPatternFu(waitPattern: WaitPattern): number {
+  return waitPattern === 'penchan' || waitPattern === 'kanchan' || waitPattern === 'tanki' ? 2 : 0;
+}
 
-  for (let tile in tileCounts) {
-    // ツモの場合、すべての3枚以上の組は暗刻
-    if (isTsumo && tileCounts[tile] >= 3) {
-      concealedTriplets.add(tile);
+function isMeldConcealed(meld: Meld, winningTile: Tile, isTsumo: boolean, isMenzen: boolean): boolean {
+  if (meld.type === 'shuntsu') return true;
+  if (!isMenzen) return false;
+  if (!isTsumo && meld.tiles.includes(winningTile)) return false;
+  return true;
+}
+
+function calculateMeldFu(meld: Meld, winningTile: Tile, isTsumo: boolean, isMenzen: boolean): number {
+  if (meld.type === 'shuntsu') return 0;
+
+  const concealed = isMeldConcealed(meld, winningTile, isTsumo, isMenzen);
+  const yaochu = isYaochuhai(meld.tiles[0]);
+
+  if (meld.type === 'kantsu') {
+    if (yaochu) {
+      return concealed ? 32 : 16;
     }
-    // ロンの場合、和了牌を含まない3枚の組のみ暗刻
-    else if (!isTsumo) {
-      if (tile === winningTile) {
-        // 和了牌が4枚ある場合は暗槓
-        if (tileCounts[tile] === 3) {
-          concealedTriplets.add(tile);
-        }
-        // 和了牌が含まれる刻子は明刻扱い（暗刻に含めない）
-      } else if (tileCounts[tile] >= 3) {
-        concealedTriplets.add(tile);
-      }
-    }
+    return concealed ? 16 : 8;
   }
 
-  return concealedTriplets;
+  if (yaochu) {
+    return concealed ? 8 : 4;
+  }
+  return concealed ? 4 : 2;
 }
 
 export function calculateFu(
@@ -430,10 +544,7 @@ export function calculateFu(
   bakaze?: string,
   jikaze?: string
 ): number {
-  const tileCounts: Record<string, number> = {};
-  hand.forEach(tile => {
-    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
-  });
+  const tileCounts = countTiles(hand);
 
   // 七対子は25符固定
   const pairs = Object.values(tileCounts).filter(count => count === 2);
@@ -441,79 +552,44 @@ export function calculateFu(
     return 25;
   }
 
-  // 平和ツモは20符固定
-  if (isTsumo && isMenzen && isPinfu(hand, winningTile, isMenzen)) {
-    return 20;
+  const bakazeTile = bakaze ? BAKAZE_MAP[bakaze] : null;
+  const jikazeTile = jikaze ? JIKAZE_MAP[jikaze] : null;
+
+  const shapes = buildHandShapes(hand);
+  if (shapes.length === 0) {
+    return 0;
   }
 
-  let fu = 20; // 基本符
+  let bestFu = 0;
 
-  // ツモ符
-  if (isTsumo) fu += 2;
+  shapes.forEach(shape => {
+    const waitPattern = detectWaitPattern(shape, winningTile);
+    const pinfuShape = isPinfuShape(shape, waitPattern, isMenzen, bakazeTile, jikazeTile);
 
-  // 門前ロン符
-  if (!isTsumo && isMenzen) fu += 10;
-
-  // 雀頭符（役牌雀頭）
-  const bakazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
-  const jikazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
-  const bakazeTile = bakaze ? bakazeMap[bakaze] : null;
-  const jikazeTile = jikaze ? jikazeMap[jikaze] : null;
-
-  for (let tile in tileCounts) {
-    if (tileCounts[tile] === 2) {
-      // 三元牌
-      if (tile === '白' || tile === '發' || tile === '中') {
-        fu += 2;
-      }
-      // 場風
-      else if (bakazeTile && tile === bakazeTile) {
-        fu += 2;
-      }
-      // 自風
-      else if (jikazeTile && tile === jikazeTile) {
-        fu += 2;
-      }
+    // 平和ツモは20符固定（門前のみ）
+    if (isTsumo && pinfuShape) {
+      bestFu = Math.max(bestFu, 20);
+      return;
     }
-  }
 
-  // 刻子符
-  const concealedTriplets = getConcealedTriplets(hand, winningTile, isTsumo);
+    let fu = 20; // 基本符
 
-  for (let tile in tileCounts) {
-    if (tileCounts[tile] >= 3) {
-      const isYaochuhai = tile.length === 1 || tile[0] === '1' || tile[0] === '9';
-      const isConcealed = concealedTriplets.has(tile);
+    if (isTsumo) fu += 2;
+    if (!isTsumo && isMenzen) fu += 10;
 
-      // 槓子の場合
-      if (tileCounts[tile] === 4) {
-        if (isYaochuhai) {
-          fu += isConcealed ? 32 : 16;
-        } else {
-          fu += isConcealed ? 16 : 8;
-        }
-      }
-      // 刻子の場合
-      else {
-        if (isYaochuhai) {
-          fu += isConcealed ? 8 : 4;
-        } else {
-          fu += isConcealed ? 4 : 2;
-        }
-      }
-    }
-  }
+    fu += calculateHeadFu(shape.pair, bakazeTile, jikazeTile);
 
-  // 待ち形符
-  const waitPattern = detectWaitPattern(hand, winningTile);
-  if (waitPattern === 'penchan' || waitPattern === 'kanchan' || waitPattern === 'tanki') {
-    fu += 2;
-  }
+    shape.melds.forEach(meld => {
+      fu += calculateMeldFu(meld, winningTile, isTsumo, isMenzen);
+    });
 
-  // 符の繰り上げ（10符単位）
-  fu = Math.ceil(fu / 10) * 10;
+    fu += waitPatternFu(waitPattern);
+    fu = Math.ceil(fu / 10) * 10;
 
-  return fu;
+    bestFu = Math.max(bestFu, fu);
+  });
+
+  return bestFu;
 }
 
 export function calculateFinalScore(han: number, fu: number, isOya: boolean, isTsumo: boolean): string {
