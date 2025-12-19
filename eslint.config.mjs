@@ -4,7 +4,7 @@ const nextConfig = [...next];
 
 const config = [
   {
-    ignores: ['.next/**', 'node_modules/**'],
+    ignores: ['.next/**', 'node_modules/**', 'coverage/**'],
   },
   ...nextConfig,
   {
