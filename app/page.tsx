@@ -14,9 +14,66 @@ import {
 } from '@/lib/mahjong';
 
 const ALL_TILES: Tile[] = [...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai];
+const HONOR_INPUT_MAP: Record<string, Tile> = {
+  ton: '東',
+  nan: '南',
+  sha: '西',
+  pei: '北',
+  haku: '白',
+  hatsu: '發',
+  chun: '中'
+};
+
+interface HistoryEntry {
+  id: string;
+  timestamp: number;
+  hand: Tile[];
+  winningTile: Tile;
+  options: AgariOptions;
+  result: CalculationResult;
+}
+
+const HISTORY_KEY = 'mahjong-history';
 
 const getMeldTileCount = (meldList: Meld[]): number =>
   meldList.reduce((sum, meld) => sum + (meld.tiles.length === 4 ? 3 : meld.tiles.length), 0);
+
+const normalizeTileCode = (value: string): Tile | null => {
+  const raw = value.trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+
+  if (HONOR_INPUT_MAP[lower]) {
+    return HONOR_INPUT_MAP[lower];
+  }
+
+  const kanaMap: Record<string, Tile> = {
+    '東': '東',
+    '南': '南',
+    '西': '西',
+    '北': '北',
+    '白': '白',
+    '發': '發',
+    '中': '中'
+  };
+  if (kanaMap[raw]) {
+    return kanaMap[raw];
+  }
+
+  if (/^[1-9][mps]$/i.test(lower)) {
+    return `${lower[0]}${lower[1]}` as Tile;
+  }
+
+  return null;
+};
+
+const cloneOptionsForHistory = (options: AgariOptions): AgariOptions => ({
+  ...options,
+  melds: options.melds ? options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : undefined,
+  doraTiles: options.doraTiles ? [...options.doraTiles] : [],
+  uraDoraTiles: options.uraDoraTiles ? [...options.uraDoraTiles] : [],
+  redDora: options.redDora ? { ...options.redDora } : undefined,
+});
 
 export default function Home() {
   const [hand, setHand] = useState<Tile[]>([]);
@@ -44,6 +101,8 @@ export default function Home() {
     pin: false,
     sou: false
   });
+  const [tileInput, setTileInput] = useState<string>('');
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   const getAllSelectedTiles = (options?: { includeWinningTile?: boolean }) => {
     const tiles: Tile[] = [...hand];
@@ -105,6 +164,66 @@ export default function Home() {
     setError('');
   };
 
+  const addTileFromInput = () => {
+    const normalized = normalizeTileCode(tileInput);
+    if (!normalized) {
+      setError('牌コードを正しく入力してください');
+      return;
+    }
+    addTileToHand(normalized);
+    setTileInput('');
+  };
+
+  const setWinningTileFromInput = () => {
+    const normalized = normalizeTileCode(tileInput);
+    if (!normalized) {
+      setError('牌コードを正しく入力してください');
+      return;
+    }
+    setWinningTileHandler(normalized);
+    setTileInput('');
+  };
+
+  const pushHistoryEntry = (calcResult: CalculationResult, optionsSnapshot: AgariOptions) => {
+    if (!winningTile) return;
+    const entry: HistoryEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: Date.now(),
+      hand: [...hand],
+      winningTile,
+      options: cloneOptionsForHistory(optionsSnapshot),
+      result: calcResult
+    };
+    setHistory(prev => {
+      const updated = [entry, ...prev];
+      return updated.slice(0, 5);
+    });
+  };
+
+  const restoreHistoryEntry = (entry: HistoryEntry) => {
+    setHand(entry.hand);
+    setWinningTile(entry.winningTile);
+    setAgariType(entry.options.isTsumo ? 'tsumo' : 'ron');
+    setBakaze(entry.options.bakaze);
+    setJikaze(entry.options.jikaze);
+    setRiichi(entry.options.isRiichi);
+    setIppatsu(entry.options.isIppatsu);
+    setMenzen(entry.options.isMenzen);
+    setIsDealer(entry.options.isOya);
+    setMelds(entry.options.melds ? entry.options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : []);
+    setIsTenhou(Boolean(entry.options.isTenhou));
+    setIsChiihou(Boolean(entry.options.isChiihou));
+    setDoraTiles(entry.options.doraTiles || []);
+    setUraDoraTiles(entry.options.uraDoraTiles || []);
+    setAkaDora({
+      man: Boolean(entry.options.redDora?.man),
+      pin: Boolean(entry.options.redDora?.pin),
+      sou: Boolean(entry.options.redDora?.sou)
+    });
+    setResult(entry.result);
+    setError('');
+  };
+
   // 鳴きの状態に応じて門前/リーチを制御（暗槓は門前扱い）
   useEffect(() => {
     const hasOpenMeld = melds.some(meld => meld.type !== 'ankan');
@@ -119,6 +238,24 @@ export default function Home() {
       setMenzen(true);
     }
   }, [melds, menzen, riichi]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem(HISTORY_KEY);
+    if (stored) {
+      try {
+        const parsed: HistoryEntry[] = JSON.parse(stored);
+        setHistory(parsed);
+      } catch (e) {
+        console.error('Failed to parse history', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }, [history]);
 
   const addTileToHand = (tile: Tile) => {
     const meldTileCount = getMeldTileCount(melds);
@@ -237,6 +374,7 @@ export default function Home() {
     } else {
       setResult(calcResult);
       setError('');
+      pushHistoryEntry(calcResult, options);
     }
   };
 
@@ -742,6 +880,27 @@ export default function Home() {
             </div>
           </div>
         </div>
+        <div className="hand-display" style={{ marginTop: '20px' }}>
+          <div className="hand-title">キーボード入力</div>
+          <div className="tile-input-card">
+            <input
+              type="text"
+              value={tileInput}
+              placeholder="例: 1m, 9p, ton, 中"
+              onChange={(e) => setTileInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  addTileFromInput();
+                }
+              }}
+            />
+            <div className="tile-input-actions">
+              <button className="btn btn-primary" onClick={addTileFromInput}>手牌に追加</button>
+              <button className="btn" onClick={setWinningTileFromInput}>和了牌に設定</button>
+            </div>
+            <div className="info-text">※ 牌コードを入力して Enter またはボタンで追加できます。</div>
+          </div>
+        </div>
       </div>
 
       {/* 計算ボタン */}
@@ -753,6 +912,35 @@ export default function Home() {
         >
           点数を計算する
         </button>
+      </div>
+
+      <div className="section">
+        <div className="section-title">計算履歴</div>
+        {history.length === 0 ? (
+          <div className="info-text">まだ履歴がありません。</div>
+        ) : (
+          <div className="history-list">
+            {history.map(entry => (
+              <div key={entry.id} className="history-item">
+                <div>
+                  <div className="history-score">{entry.result.score}</div>
+                  <div className="history-meta">
+                    {new Date(entry.timestamp).toLocaleString()} / {entry.result.han}翻 {entry.result.fu}符
+                  </div>
+                  <div className="history-hand">
+                    {entry.hand.join(' ')} | 和了牌: {entry.winningTile}
+                  </div>
+                  <div className="history-yaku">
+                    {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}
+                  </div>
+                </div>
+                <button className="btn btn-secondary" onClick={() => restoreHistoryEntry(entry)}>
+                  この手を再表示
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 結果表示 */}
