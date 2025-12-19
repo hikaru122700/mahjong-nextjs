@@ -27,6 +27,7 @@ export default function Home() {
   const [riichi, setRiichi] = useState<boolean>(false);
   const [ippatsu, setIppatsu] = useState<boolean>(false);
   const [menzen, setMenzen] = useState<boolean>(true);
+  const [isDealer, setIsDealer] = useState<boolean>(true);
   const [melds, setMelds] = useState<Meld[]>([]);
   const [meldInput, setMeldInput] = useState<Tile[]>([]);
   const [meldType, setMeldType] = useState<MeldType>('chii');
@@ -105,6 +106,7 @@ export default function Home() {
     setError('');
     setMelds([]);
     setMeldInput([]);
+    setIsDealer(true);
   };
 
   const handleCalculate = () => {
@@ -120,6 +122,7 @@ export default function Home() {
       isRiichi: riichi,
       isIppatsu: ippatsu,
       isMenzen: menzen,
+      isOya: isDealer,
       melds: melds.length > 0 ? melds : undefined,
       isTenhou,
       isChiihou
@@ -438,6 +441,32 @@ export default function Home() {
                 北
               </label>
             </div>
+          </div>
+          <div className="option-group">
+            <div className="option-title">親番</div>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="radio"
+                  name="oya"
+                  value="oya"
+                  checked={isDealer}
+                  onChange={() => setIsDealer(true)}
+                />
+                親（東家）
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="radio"
+                  name="oya"
+                  value="ko"
+                  checked={!isDealer}
+                  onChange={() => setIsDealer(false)}
+                />
+                子
+              </label>
+            </div>
+            <div className="info-text">※ 点数計算のみに利用されます。</div>
           </div>
           <div className="option-group">
             <div className="option-title">その他</div>
