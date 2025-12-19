@@ -1,0 +1,137 @@
+name: Review Insights
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        id: lint
+        run: |
+          set +e
+          npm run lint > lint-output.txt 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Run tests with coverage
+        id: test
+        run: |
+          set +e
+          npm run test -- --coverage > test-output.txt 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate coverage summary
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const summaryPath = 'coverage/coverage-summary.json';
+          let text = 'Coverage data unavailable.';
+          try {
+            const json = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+            const total = json.total || {};
+            const sections = ['lines', 'statements', 'branches', 'functions'];
+            const parts = sections.map((key) => {
+              const data = total[key];
+              if (!data) return `${key}: n/a`;
+              return `${key}: ${data.pct}% (${data.covered}/${data.total})`;
+            });
+            text = parts.join(', ');
+          } catch (error) {
+            text = 'Coverage summary could not be generated.';
+          }
+          fs.writeFileSync('coverage-summary.txt', text);
+          EOF
+
+      - name: Post review comment
+        uses: actions/github-script@v7
+        env:
+          LINT_STATUS: ${{ steps.lint.outputs.status }}
+          TEST_STATUS: ${{ steps.test.outputs.status }}
+        with:
+          script: |
+            const fs = require('fs');
+            const read = (path) => {
+              try {
+                return fs.readFileSync(path, 'utf8').trim();
+              } catch (error) {
+                return '出力はありません。';
+              }
+            };
+            const lintOutput = read('lint-output.txt');
+            const testOutput = read('test-output.txt');
+            const coverageSummary = read('coverage-summary.txt');
+            const lintStatus = process.env.LINT_STATUS === '0' ? '✅ 成功' : '❌ 失敗';
+            const testStatus = process.env.TEST_STATUS === '0' ? '✅ 成功' : '❌ 失敗';
+            const marker = '<!-- ci-review-comment -->';
+            const body = `${marker}
+### 自動レビュー結果
+- Lint: ${lintStatus}
+- Test: ${testStatus}
+- Coverage: ${coverageSummary}
+
+<details>
+<summary>Lint 出力</summary>
+
+\n\n
+\`\`\`
+${lintOutput}
+\`\`\`
+
+</details>
+
+<details>
+<summary>Test 出力</summary>
+
+\n\n
+\`\`\`
+${testOutput}
+\`\`\`
+
+</details>`;
+            const issue_number = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) => comment.body && comment.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number,
+                body,
+              });
+            }
+
+      - name: Fail if checks failed
+        if: ${{ or(ne(steps.lint.outputs.status, '0'), ne(steps.test.outputs.status, '0')) }}
+        run: |
+          echo "Lint または Test が失敗しました。"
+          exit 1
