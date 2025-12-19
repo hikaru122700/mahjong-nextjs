@@ -84,6 +84,7 @@ export default function Home() {
   const [bakaze, setBakaze] = useState<string>('ton');
   const [jikaze, setJikaze] = useState<string>('ton');
   const [riichi, setRiichi] = useState<boolean>(false);
+  const [isDoubleRiichi, setIsDoubleRiichi] = useState<boolean>(false);
   const [ippatsu, setIppatsu] = useState<boolean>(false);
   const [menzen, setMenzen] = useState<boolean>(true);
   const [isDealer, setIsDealer] = useState<boolean>(true);
@@ -92,6 +93,11 @@ export default function Home() {
   const [meldType, setMeldType] = useState<MeldType>('chii');
   const [isTenhou, setIsTenhou] = useState<boolean>(false);
   const [isChiihou, setIsChiihou] = useState<boolean>(false);
+  const [isHaitei, setIsHaitei] = useState<boolean>(false);
+  const [isHoutei, setIsHoutei] = useState<boolean>(false);
+  const [isRinshan, setIsRinshan] = useState<boolean>(false);
+  const [isChankan, setIsChankan] = useState<boolean>(false);
+  const [isNagashiMangan, setIsNagashiMangan] = useState<boolean>(false);
   const [doraTiles, setDoraTiles] = useState<Tile[]>([]);
   const [uraDoraTiles, setUraDoraTiles] = useState<Tile[]>([]);
   const [doraSelect, setDoraSelect] = useState<Tile>(ALL_TILES[0]);
@@ -207,12 +213,18 @@ export default function Home() {
     setBakaze(entry.options.bakaze);
     setJikaze(entry.options.jikaze);
     setRiichi(entry.options.isRiichi);
+    setIsDoubleRiichi(Boolean(entry.options.isDoubleRiichi));
     setIppatsu(entry.options.isIppatsu);
     setMenzen(entry.options.isMenzen);
     setIsDealer(entry.options.isOya);
     setMelds(entry.options.melds ? entry.options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : []);
     setIsTenhou(Boolean(entry.options.isTenhou));
     setIsChiihou(Boolean(entry.options.isChiihou));
+    setIsHaitei(Boolean(entry.options.isHaitei));
+    setIsHoutei(Boolean(entry.options.isHoutei));
+    setIsRinshan(Boolean(entry.options.isRinshan));
+    setIsChankan(Boolean(entry.options.isChankan));
+    setIsNagashiMangan(Boolean(entry.options.isNagashiMangan));
     setDoraTiles(entry.options.doraTiles || []);
     setUraDoraTiles(entry.options.uraDoraTiles || []);
     setAkaDora({
@@ -234,10 +246,26 @@ export default function Home() {
       if (riichi) {
         setRiichi(false);
       }
+      if (isDoubleRiichi) {
+        setIsDoubleRiichi(false);
+      }
+      if (ippatsu) {
+        setIppatsu(false);
+      }
     } else if (!menzen) {
       setMenzen(true);
     }
-  }, [melds, menzen, riichi]);
+  }, [melds, menzen, riichi, isDoubleRiichi, ippatsu]);
+
+  useEffect(() => {
+    if (agariType === 'tsumo') {
+      if (isHoutei) setIsHoutei(false);
+      if (isChankan) setIsChankan(false);
+    } else {
+      if (isHaitei) setIsHaitei(false);
+      if (isRinshan) setIsRinshan(false);
+    }
+  }, [agariType, isHaitei, isHoutei, isRinshan, isChankan]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -332,7 +360,21 @@ export default function Home() {
     setError('');
     setMelds([]);
     setMeldInput([]);
+    setAgariType('tsumo');
+    setBakaze('ton');
+    setJikaze('ton');
+    setRiichi(false);
+    setIsDoubleRiichi(false);
+    setIppatsu(false);
+    setMenzen(true);
     setIsDealer(true);
+    setIsTenhou(false);
+    setIsChiihou(false);
+    setIsHaitei(false);
+    setIsHoutei(false);
+    setIsRinshan(false);
+    setIsChankan(false);
+    setIsNagashiMangan(false);
     setDoraTiles([]);
     setUraDoraTiles([]);
     setAkaDora({ man: false, pin: false, sou: false });
@@ -351,12 +393,18 @@ export default function Home() {
       bakaze,
       jikaze,
       isRiichi: riichi,
+      isDoubleRiichi,
       isIppatsu: ippatsu,
       isMenzen: menzen,
       isOya: isDealer,
       melds: melds.length > 0 ? melds : undefined,
       isTenhou,
       isChiihou,
+      isHaitei,
+      isHoutei,
+      isRinshan,
+      isChankan,
+      isNagashiMangan,
       doraTiles,
       uraDoraTiles: riichi ? uraDoraTiles : [],
       redDora: {
@@ -721,10 +769,27 @@ export default function Home() {
                       setMenzen(true);
                     } else {
                       setIppatsu(false);
+                      setIsDoubleRiichi(false);
                     }
                   }}
                 />
                 リーチ
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isDoubleRiichi}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsDoubleRiichi(checked);
+                    if (checked) {
+                      setRiichi(true);
+                      setMenzen(true);
+                    }
+                  }}
+                  disabled={!menzen}
+                />
+                ダブルリーチ
               </label>
               <label className="checkbox-label">
                 <input
@@ -745,10 +810,60 @@ export default function Home() {
                     if (!checked) {
                       setRiichi(false);
                       setIppatsu(false);
+                      setIsDoubleRiichi(false);
                     }
                   }}
                 />
                 門前（鳴きなし）
+              </label>
+            </div>
+          </div>
+          <div className="option-group">
+            <div className="option-title">特殊和了条件</div>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isHaitei}
+                  onChange={(e) => setIsHaitei(e.target.checked)}
+                  disabled={agariType !== 'tsumo'}
+                />
+                海底摸月
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isHoutei}
+                  onChange={(e) => setIsHoutei(e.target.checked)}
+                  disabled={agariType !== 'ron'}
+                />
+                河底撈魚
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isRinshan}
+                  onChange={(e) => setIsRinshan(e.target.checked)}
+                  disabled={agariType !== 'tsumo'}
+                />
+                嶺上開花
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isChankan}
+                  onChange={(e) => setIsChankan(e.target.checked)}
+                  disabled={agariType !== 'ron'}
+                />
+                槍槓
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isNagashiMangan}
+                  onChange={(e) => setIsNagashiMangan(e.target.checked)}
+                />
+                流し満貫
               </label>
             </div>
           </div>
