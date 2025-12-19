@@ -21,7 +21,7 @@ export default function Home() {
   const [jikaze, setJikaze] = useState<string>('ton');
   const [riichi, setRiichi] = useState<boolean>(false);
   const [ippatsu, setIppatsu] = useState<boolean>(false);
-  const [menzen, setMenzen] = useState<boolean>(false);
+  const [menzen, setMenzen] = useState<boolean>(true);
 
   const addTileToHand = (tile: Tile) => {
     if (hand.length >= 13) {
@@ -300,7 +300,15 @@ export default function Home() {
                 <input
                   type="checkbox"
                   checked={riichi}
-                  onChange={(e) => setRiichi(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setRiichi(checked);
+                    if (checked) {
+                      setMenzen(true);
+                    } else {
+                      setIppatsu(false);
+                    }
+                  }}
                 />
                 リーチ
               </label>
@@ -309,6 +317,7 @@ export default function Home() {
                   type="checkbox"
                   checked={ippatsu}
                   onChange={(e) => setIppatsu(e.target.checked)}
+                  disabled={!riichi}
                 />
                 一発
               </label>
@@ -316,7 +325,14 @@ export default function Home() {
                 <input
                   type="checkbox"
                   checked={menzen}
-                  onChange={(e) => setMenzen(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setMenzen(checked);
+                    if (!checked) {
+                      setRiichi(false);
+                      setIppatsu(false);
+                    }
+                  }}
                 />
                 門前（鳴きなし）
               </label>
