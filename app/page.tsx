@@ -75,6 +75,8 @@ const cloneOptionsForHistory = (options: AgariOptions): AgariOptions => ({
   redDora: options.redDora ? { ...options.redDora } : undefined,
 });
 
+const formatBooleanOption = (value?: boolean) => (value ? 'あり' : 'なし');
+
 export default function Home() {
   const [hand, setHand] = useState<Tile[]>([]);
   const [winningTile, setWinningTile] = useState<Tile | null>(null);
@@ -109,6 +111,8 @@ export default function Home() {
   });
   const [tileInput, setTileInput] = useState<string>('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [activeHistoryTab, setActiveHistoryTab] = useState<'hand' | 'options' | 'result'>('hand');
 
   const getAllSelectedTiles = (options?: { includeWinningTile?: boolean }) => {
     const tiles: Tile[] = [...hand];
@@ -234,6 +238,8 @@ export default function Home() {
     });
     setResult(entry.result);
     setError('');
+    setActiveHistoryId(entry.id);
+    setActiveHistoryTab('hand');
   };
 
   // 鳴きの状態に応じて門前/リーチを制御（暗槓は門前扱い）
@@ -1035,25 +1041,83 @@ export default function Home() {
           <div className="info-text">まだ履歴がありません。</div>
         ) : (
           <div className="history-list">
-            {history.map(entry => (
-              <div key={entry.id} className="history-item">
-                <div>
-                  <div className="history-score">{entry.result.score}</div>
-                  <div className="history-meta">
-                    {new Date(entry.timestamp).toLocaleString()} / {entry.result.han}翻 {entry.result.fu}符
+            {history.map(entry => {
+              const isActive = activeHistoryId === entry.id;
+              const detailTabs: { key: 'hand' | 'options' | 'result'; label: string }[] = [
+                { key: 'hand', label: '手牌情報' },
+                { key: 'options', label: '条件' },
+                { key: 'result', label: '結果' }
+              ];
+              const meldSummary = entry.options.melds && entry.options.melds.length > 0
+                ? entry.options.melds.map(meld => `${meld.type.toUpperCase()}(${meld.tiles.join(' ')})`).join(' / ')
+                : 'なし';
+              return (
+                <div key={entry.id} className="history-item">
+                  <div>
+                    <div className="history-score">{entry.result.score}</div>
+                    <div className="history-meta">
+                      {new Date(entry.timestamp).toLocaleString()} / {entry.result.han}翻 {entry.result.fu}符
+                    </div>
+                    <div className="history-hand">
+                      {entry.hand.join(' ')} | 和了牌: {entry.winningTile}
+                    </div>
+                    <div className="history-yaku">
+                      {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}
+                    </div>
                   </div>
-                  <div className="history-hand">
-                    {entry.hand.join(' ')} | 和了牌: {entry.winningTile}
-                  </div>
-                  <div className="history-yaku">
-                    {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}
-                  </div>
+                  <button className="btn btn-secondary" onClick={() => restoreHistoryEntry(entry)}>
+                    この手を再表示
+                  </button>
+                  {isActive && (
+                    <div className="history-detail" style={{ marginTop: '12px', background: '#f8f8ff', padding: '12px', borderRadius: '8px' }}>
+                      <div className="history-tabs" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                        {detailTabs.map(tab => (
+                          <button
+                            key={tab.key}
+                            type="button"
+                            className={`btn ${activeHistoryTab === tab.key ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setActiveHistoryTab(tab.key)}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="history-detail-content">
+                        {activeHistoryTab === 'hand' && (
+                          <div>
+                            <div>手牌: {entry.hand.join(' ')}</div>
+                            <div style={{ marginTop: '4px' }}>和了牌: {entry.winningTile}</div>
+                            <div style={{ marginTop: '4px' }}>鳴き: {meldSummary}</div>
+                          </div>
+                        )}
+                        {activeHistoryTab === 'options' && (
+                          <div className="history-option-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '6px' }}>
+                            <div>和了方法: {entry.options.isTsumo ? 'ツモ' : 'ロン'}</div>
+                            <div>リーチ: {formatBooleanOption(entry.options.isRiichi)}</div>
+                            <div>ダブルリーチ: {formatBooleanOption(entry.options.isDoubleRiichi)}</div>
+                            <div>一発: {formatBooleanOption(entry.options.isIppatsu)}</div>
+                            <div>門前: {formatBooleanOption(entry.options.isMenzen)}</div>
+                            <div>親番: {formatBooleanOption(entry.options.isOya)}</div>
+                            <div>海底: {formatBooleanOption(entry.options.isHaitei)}</div>
+                            <div>河底: {formatBooleanOption(entry.options.isHoutei)}</div>
+                            <div>嶺上: {formatBooleanOption(entry.options.isRinshan)}</div>
+                            <div>槍槓: {formatBooleanOption(entry.options.isChankan)}</div>
+                            <div>流し満貫: {formatBooleanOption(entry.options.isNagashiMangan)}</div>
+                          </div>
+                        )}
+                        {activeHistoryTab === 'result' && (
+                          <div>
+                            <div>翻数: {entry.result.han}翻 / 符: {entry.result.fu}符</div>
+                            <div style={{ marginTop: '4px' }}>点数: {entry.result.score}</div>
+                            <div style={{ marginTop: '4px' }}>成立役: {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button className="btn btn-secondary" onClick={() => restoreHistoryEntry(entry)}>
-                  この手を再表示
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
