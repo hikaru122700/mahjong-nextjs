@@ -822,7 +822,7 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   }
 
   // 平和（ピンフ）- 門前のみ
-  if (isPinfu(hand, winningTile, options.isMenzen) && !hasMelds) {
+  if (isPinfu(hand, winningTile, options.isMenzen, options.bakaze, options.jikaze) && !hasMelds) {
     yaku.push({ name: '平和', han: 1 });
   }
 
@@ -990,7 +990,7 @@ export function calculateFu(
   }
 
   // 平和ツモは20符固定
-  if (isTsumo && isMenzen && isPinfu(hand, winningTile, isMenzen)) {
+  if (isTsumo && isMenzen && isPinfu(hand, winningTile, isMenzen, bakaze, jikaze)) {
     return 20;
   }
 
