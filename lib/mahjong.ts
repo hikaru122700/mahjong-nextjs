@@ -60,6 +60,11 @@ interface HandShape {
   melds: Meld[];
 }
 
+interface MentsuPattern {
+  jantou: Tile;
+  mentsu: Tile[][];
+}
+
 export function sortHand(tiles: Tile[]): Tile[] {
   return [...tiles].sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
 }
@@ -91,6 +96,22 @@ function isValueTile(tile: Tile, bakazeTile?: string | null, jikazeTile?: string
   if (tile === '白' || tile === '發' || tile === '中') return true;
   if (bakazeTile && tile === bakazeTile) return true;
   if (jikazeTile && tile === jikazeTile) return true;
+  return false;
+}
+
+function isYakuhai(tile: Tile, bakaze?: string, jikaze?: string): boolean {
+  if (tile === '白' || tile === '發' || tile === '中') {
+    return true;
+  }
+
+  if (bakaze && BAKAZE_MAP[bakaze] && tile === BAKAZE_MAP[bakaze]) {
+    return true;
+  }
+
+  if (jikaze && JIKAZE_MAP[jikaze] && tile === JIKAZE_MAP[jikaze]) {
+    return true;
+  }
+
   return false;
 }
 
@@ -179,6 +200,69 @@ function buildHandShapes(hand: Tile[]): HandShape[] {
   return shapes;
 }
 
+function getMentsuPatterns(hand: Tile[]): MentsuPattern[] {
+  return buildHandShapes(hand).map(shape => ({
+    jantou: shape.pair,
+    mentsu: shape.melds.map(meld => [...meld.tiles])
+  }));
+}
+
+function isShuntsu(tiles: Tile[]): boolean {
+  if (tiles.length !== 3) return false;
+  const sorted = sortHand(tiles);
+  const [num1, suit1] = parseTile(sorted[0]);
+  const [num2, suit2] = parseTile(sorted[1]);
+  const [num3, suit3] = parseTile(sorted[2]);
+
+  if (num1 === null || num2 === null || num3 === null) return false;
+  if (suit1 !== suit2 || suit2 !== suit3) return false;
+
+  return num2 === num1 + 1 && num3 === num2 + 1;
+}
+
+function isRyanmenWait(
+  hand: Tile[],
+  winningTile: Tile,
+  targetPattern?: MentsuPattern
+): boolean {
+  const patterns = targetPattern ? [targetPattern] : getMentsuPatterns(hand);
+  return patterns.some(pattern => isRyanmenWaitForPattern(pattern, winningTile));
+}
+
+function isRyanmenWaitForPattern(pattern: MentsuPattern, winningTile: Tile): boolean {
+  if (pattern.jantou === winningTile) return false;
+
+  const targetMentsu = pattern.mentsu.find(mentsu => mentsu.includes(winningTile));
+  if (!targetMentsu || targetMentsu.length !== 3) {
+    return false;
+  }
+
+  if (!isShuntsu(targetMentsu)) {
+    return false;
+  }
+
+  const sorted = sortHand(targetMentsu);
+  const isLowest = winningTile === sorted[0];
+  const isHighest = winningTile === sorted[2];
+
+  if (!isLowest && !isHighest) {
+    return false;
+  }
+
+  const [firstNum] = parseTile(sorted[0]);
+  const [thirdNum] = parseTile(sorted[2]);
+
+  if (firstNum === null || thirdNum === null) {
+    return false;
+  }
+
+  if ((isHighest && firstNum === 1) || (isLowest && thirdNum === 9)) {
+    return false;
+  }
+
+  return true;
+}
+
 function checkMentsu(tiles: Record<string, number>, count: number): boolean {
   if (count === 0) {
     return Object.values(tiles).every(c => c === 0);
@@ -263,15 +347,23 @@ function isTanyao(hand: Tile[]): boolean {
 
 function isPinfu(hand: Tile[], winningTile: Tile, isMenzen: boolean, bakaze?: string, jikaze?: string): boolean {
   if (!isMenzen) return false;
-  const shapes = buildHandShapes(hand);
-  const bakazeTile = bakaze ? BAKAZE_MAP[bakaze] : null;
-  const jikazeTile = jikaze ? JIKAZE_MAP[jikaze] : null;
 
-  return shapes.some(shape => {
-    const wait = detectWaitPattern(shape, winningTile);
-    if (wait !== 'ryanmen') return false;
-    if (isValueTile(shape.pair, bakazeTile, jikazeTile)) return false;
-    return shape.melds.every(m => m.type === 'shuntsu');
+  const patterns = getMentsuPatterns(hand);
+  if (patterns.length === 0) {
+    return false;
+  }
+
+  return patterns.some(pattern => {
+    const hasOnlyShuntsu = pattern.mentsu.every(mentsu => isShuntsu(mentsu));
+    if (!hasOnlyShuntsu) {
+      return false;
+    }
+
+    if (isYakuhai(pattern.jantou, bakaze, jikaze)) {
+      return false;
+    }
+
+    return isRyanmenWait(hand, winningTile, pattern);
   });
 }
 
