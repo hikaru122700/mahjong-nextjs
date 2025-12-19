@@ -716,7 +716,12 @@ function isToitoihou(hand: Tile[], melds?: Meld[]): boolean {
   return koutsu >= 4;
 }
 
-function countAnkou(hand: Tile[]): number {
+function countAnkou(
+  hand: Tile[],
+  winningTile: Tile,
+  isTsumo: boolean,
+  melds?: Meld[]
+): number {
   const tileCounts: Record<string, number> = {};
   hand.forEach(tile => {
     tileCounts[tile] = (tileCounts[tile] || 0) + 1;
@@ -726,6 +731,15 @@ function countAnkou(hand: Tile[]): number {
   for (let tile in tileCounts) {
     if (tileCounts[tile] >= 3) ankou++;
   }
+
+  if (!isTsumo && tileCounts[winningTile] === 3) {
+    ankou -= 1;
+  }
+
+  if (melds) {
+    ankou += melds.filter(meld => meld.type === 'ankan').length;
+  }
+
   return Math.min(ankou, 3);
 }
 
@@ -1198,7 +1212,7 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   }
 
   // 三暗刻
-  const ankou = countAnkou(hand);
+  const ankou = countAnkou(hand, winningTile, options.isTsumo, melds);
   if (ankou === 3) {
     yaku.push({ name: '三暗刻', han: 2 });
   }
