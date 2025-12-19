@@ -39,6 +39,17 @@ npm run build
 npm start
 ```
 
+## Makefileのコマンド
+
+`Makefile` に一般的な操作をまとめています。以下のコマンドを使うと便利です。
+
+```bash
+make init   # npm install と同等
+make dev    # 開発サーバー起動 (npm run dev)
+make build  # ビルド (npm run build)
+make deploy # ビルド後の本番モード起動 (npm run start)
+```
+
 ## プロジェクト構造
 
 ```
