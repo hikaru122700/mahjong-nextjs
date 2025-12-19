@@ -34,6 +34,25 @@ export default function Home() {
   const [isTenhou, setIsTenhou] = useState<boolean>(false);
   const [isChiihou, setIsChiihou] = useState<boolean>(false);
 
+  const getAllSelectedTiles = (options?: { includeWinningTile?: boolean }) => {
+    const tiles: Tile[] = [...hand];
+    melds.forEach(meld => tiles.push(...meld.tiles));
+    tiles.push(...meldInput);
+    if (winningTile && options?.includeWinningTile !== false) {
+      tiles.push(winningTile);
+    }
+    return tiles;
+  };
+
+  const exceedsTileLimit = (tile: Tile, options?: { includeWinningTile?: boolean }) => {
+    const count = getAllSelectedTiles(options).filter(t => t === tile).length;
+    if (count >= 4) {
+      setError('同じ牌は4枚まで選択できます');
+      return true;
+    }
+    return false;
+  };
+
   // 鳴きがある場合は門前をfalseに設定
   useEffect(() => {
     if (melds.length > 0) {
@@ -47,7 +66,14 @@ export default function Home() {
     const maxHandSize = 14 - meldTileCount - 1;
 
     if (hand.length >= maxHandSize) {
+      if (exceedsTileLimit(tile, { includeWinningTile: false })) {
+        return;
+      }
       setWinningTile(tile);
+      setError('');
+      return;
+    }
+    if (exceedsTileLimit(tile)) {
       return;
     }
     setHand(sortHand([...hand, tile]));
@@ -57,7 +83,11 @@ export default function Home() {
   const addTileToMeld = (tile: Tile) => {
     const requiredTiles = meldType === 'ankan' || meldType === 'minkan' ? 4 : 3;
     if (meldInput.length < requiredTiles) {
+      if (exceedsTileLimit(tile)) {
+        return;
+      }
       setMeldInput([...meldInput, tile]);
+      setError('');
     }
   };
 
