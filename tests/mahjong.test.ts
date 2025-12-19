@@ -15,12 +15,18 @@ const baseOptions: AgariOptions = {
   bakaze: 'ton',
   jikaze: 'nan',
   isRiichi: false,
+  isDoubleRiichi: false,
   isIppatsu: false,
   isMenzen: true,
   isOya: false,
   doraTiles: [],
   uraDoraTiles: [],
   redDora: { man: 0, pin: 0, sou: 0 },
+  isHaitei: false,
+  isHoutei: false,
+  isRinshan: false,
+  isChankan: false,
+  isNagashiMangan: false,
 };
 
 describe('isWinningHand', () => {
@@ -73,6 +79,48 @@ describe('yaku detection', () => {
     const fullHand: Tile[] = ['1s', '2s', '3s', '4s', '5s', '6s', '7s', '7s', '7s', '8s', '8s', '8s', '9s', '9s'];
     const yaku = detectYaku(fullHand, '9s', { ...baseOptions });
     expect(yaku.map(y => y.name)).toContain('清一色');
+  });
+
+  it('detects Double Riichi and Ippatsu', () => {
+    const fullHand: Tile[] = ['2m', '3m', '4m', '2p', '3p', '4p', '2s', '3s', '4s', '5m', '6m', '7m', '9p', '9p'];
+    const yaku = detectYaku(fullHand, '7m', {
+      ...baseOptions,
+      isTsumo: false,
+      isRiichi: true,
+      isDoubleRiichi: true,
+      isIppatsu: true,
+    });
+    const names = yaku.map(y => y.name);
+    expect(names).toContain('ダブルリーチ');
+    expect(names).toContain('一発');
+    expect(names).not.toContain('リーチ');
+  });
+
+  it('detects Haitei and Rinshan for tsumo', () => {
+    const fullHand: Tile[] = ['1m', '2m', '3m', '3p', '4p', '5p', '6p', '7p', '8p', '2s', '3s', '4s', '8m', '8m'];
+    const yaku = detectYaku(fullHand, '3s', {
+      ...baseOptions,
+      isHaitei: true,
+      isRinshan: true,
+    });
+    const names = yaku.map(y => y.name);
+    expect(names).toContain('海底摸月');
+    expect(names).toContain('嶺上開花');
+  });
+
+  it('detects Houtei, Chankan, and Nagashi Mangan', () => {
+    const fullHand: Tile[] = ['1m', '2m', '3m', '1p', '2p', '3p', '1s', '2s', '3s', '5p', '6p', '7p', '4m', '4m'];
+    const yaku = detectYaku(fullHand, '7p', {
+      ...baseOptions,
+      isTsumo: false,
+      isHoutei: true,
+      isChankan: true,
+      isNagashiMangan: true,
+    });
+    const names = yaku.map(y => y.name);
+    expect(names).toContain('河底撈魚');
+    expect(names).toContain('槍槓');
+    expect(names).toContain('流し満貫');
   });
 });
 
@@ -181,7 +229,7 @@ describe('calculateScore validations', () => {
   });
 });
 
-describe('yaku detection', () => {
+describe('additional yaku detection', () => {
   it('identifies Sanshoku Doujun', () => {
     const fullHand: Tile[] = ['2m', '3m', '4m', '2p', '3p', '4p', '2s', '3s', '4s', '5m', '6m', '7m', '9p', '9p'];
     const winningTile: Tile = '7m';
@@ -193,5 +241,60 @@ describe('yaku detection', () => {
 
     const yaku = detectYaku(fullHand, winningTile, options);
     expect(yaku.map(y => y.name)).toContain('三色同順');
+  });
+
+  it('detects Sanshoku Doukou', () => {
+    const fullHand: Tile[] = ['1m', '1m', '1m', '1p', '1p', '1p', '1s', '1s', '1s', '3m', '4m', '5m', '9p', '9p'];
+    const yaku = detectYaku(fullHand, '5m', { ...baseOptions });
+    expect(yaku.map(y => y.name)).toContain('三色同刻');
+  });
+
+  it('detects San Kantsu from melds', () => {
+    const melds = [
+      { type: 'minkan' as const, tiles: ['1m', '1m', '1m', '1m'] },
+      { type: 'ankan' as const, tiles: ['2p', '2p', '2p', '2p'] },
+      { type: 'minkan' as const, tiles: ['3s', '3s', '3s', '3s'] },
+    ];
+    const fullHand: Tile[] = ['4m', '5m', '6m', '9p', '9p'];
+    const yaku = detectYaku(fullHand, '6m', {
+      ...baseOptions,
+      isMenzen: false,
+      melds,
+    });
+    expect(yaku.map(y => y.name)).toContain('三槓子');
+  });
+
+  it('detects Suukantsu yakuman', () => {
+    const melds = [
+      { type: 'minkan' as const, tiles: ['1m', '1m', '1m', '1m'] },
+      { type: 'ankan' as const, tiles: ['2p', '2p', '2p', '2p'] },
+      { type: 'minkan' as const, tiles: ['3s', '3s', '3s', '3s'] },
+      { type: 'ankan' as const, tiles: ['東', '東', '東', '東'] },
+    ];
+    const fullHand: Tile[] = ['9p', '9p'];
+    const yaku = detectYaku(fullHand, '9p', {
+      ...baseOptions,
+      isMenzen: false,
+      melds,
+    });
+    expect(yaku.map(y => y.name)).toContain('四槓子');
+  });
+
+  it('detects Kokushi Musou thirteen-sided wait', () => {
+    const fullHand: Tile[] = ['1m', '1m', '9m', '1p', '9p', '1s', '9s', '東', '南', '西', '北', '白', '發', '中'];
+    const yaku = detectYaku(fullHand, '1m', { ...baseOptions });
+    expect(yaku.map(y => y.name)).toContain('国士無双十三面待ち');
+  });
+
+  it('detects Suuankou Tanki', () => {
+    const fullHand: Tile[] = ['1m', '1m', '1m', '2m', '2m', '2m', '3p', '3p', '3p', '4p', '4p', '4p', '9s', '9s'];
+    const yaku = detectYaku(fullHand, '9s', { ...baseOptions });
+    expect(yaku.map(y => y.name)).toContain('四暗刻単騎');
+  });
+
+  it('detects Pure Chuuren Poutou', () => {
+    const fullHand: Tile[] = ['1m', '1m', '1m', '2m', '3m', '4m', '5m', '5m', '6m', '7m', '8m', '9m', '9m', '9m'];
+    const yaku = detectYaku(fullHand, '5m', { ...baseOptions });
+    expect(yaku.map(y => y.name)).toContain('純正九蓮宝燈');
   });
 });

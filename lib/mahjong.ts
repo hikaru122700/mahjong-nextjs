@@ -17,12 +17,18 @@ export interface AgariOptions {
   bakaze: string;
   jikaze: string;
   isRiichi: boolean;
+  isDoubleRiichi?: boolean;
   isIppatsu: boolean;
   isMenzen: boolean;
   isOya: boolean;
   melds?: Meld[];
   isTenhou?: boolean;
   isChiihou?: boolean;
+  isHaitei?: boolean;
+  isHoutei?: boolean;
+  isRinshan?: boolean;
+  isChankan?: boolean;
+  isNagashiMangan?: boolean;
   doraTiles?: Tile[];
   uraDoraTiles?: Tile[];
   redDora?: {
@@ -252,6 +258,19 @@ function countRedDora(counts: Record<string, number>, redOptions?: { man: number
     total += Math.min(redOptions.sou, counts['5s'] || 0);
   }
   return total;
+}
+
+function countKanSets(melds?: Meld[]): number {
+  if (!melds) return 0;
+  return melds.filter(meld => meld.type === 'minkan' || meld.type === 'ankan').length;
+}
+
+function isSanKantsu(melds?: Meld[]): boolean {
+  return countKanSets(melds) >= 3;
+}
+
+function isSuukantsu(melds?: Meld[]): boolean {
+  return countKanSets(melds) >= 4;
 }
 
 function buildDoraYaku(allTiles: Tile[], options: AgariOptions): Yaku[] {
@@ -621,6 +640,20 @@ function isJunchan(hand: Tile[], melds?: Meld[]): boolean {
   });
 }
 
+function isSanshokuDoukou(hand: Tile[], melds?: Meld[]): boolean {
+  const allTiles = getAllTiles(hand, melds);
+  const counts = countTiles(allTiles);
+  for (let i = 1; i <= 9; i++) {
+    const man = `${i}m`;
+    const pin = `${i}p`;
+    const sou = `${i}s`;
+    if ((counts[man] || 0) >= 3 && (counts[pin] || 0) >= 3 && (counts[sou] || 0) >= 3) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function detectYakuhai(hand: Tile[], bakaze: string, jikaze: string, melds?: Meld[]): Yaku[] {
   const yaku: Yaku[] = [];
   const tileCounts: Record<string, number> = {};
@@ -777,6 +810,13 @@ function isKokushi(hand: Tile[], melds?: Meld[]): boolean {
   return hasOnlyYaochuhai;
 }
 
+function isKokushiThirteenWait(hand: Tile[], winningTile: Tile): boolean {
+  const yaochuhai = ['1m', '9m', '1p', '9p', '1s', '9s', '東', '南', '西', '北', '白', '發', '中'];
+  const tileCounts = countTiles(hand);
+  const duplicateTiles = yaochuhai.filter(tile => (tileCounts[tile] || 0) === 2);
+  return duplicateTiles.length === 1 && duplicateTiles[0] === winningTile;
+}
+
 /**
  * 四暗刻（Suu Ankou）- 13翻
  * 4つの暗刻（門前で作った刻子）+ 雀頭
@@ -908,6 +948,23 @@ function isChuurenPoutou(hand: Tile[], melds?: Meld[]): boolean {
   return extraCount === 1;
 }
 
+function isPureChuuren(hand: Tile[], winningTile: Tile, melds?: Meld[]): boolean {
+  if (!isChuurenPoutou(hand, melds)) return false;
+  const suit = hand[0][1];
+  if (!suit) return false;
+  const counts = countTiles(hand);
+  const adjustedCounts = { ...counts, [winningTile]: (counts[winningTile] || 0) - 1 };
+  if (adjustedCounts[winningTile] < 0) return false;
+  for (let i = 1; i <= 9; i++) {
+    const tile = `${i}${suit}`;
+    const expected = i === 1 || i === 9 ? 3 : 1;
+    if ((adjustedCounts[tile] || 0) !== expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * 小四喜（Shousuushii）- 13翻
  * 4種の風牌のうち3つが刻子、1つが雀頭
@@ -990,15 +1047,29 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
     return yaku;
   }
 
+  // 四槓子（ダブル役満）
+  if (isSuukantsu(melds)) {
+    yaku.push({ name: '四槓子', han: 26 });
+    return yaku;
+  }
+
   // 国士無双 - 13翻
   if (isKokushi(hand, melds)) {
-    yaku.push({ name: '国士無双', han: 13 });
+    if (isKokushiThirteenWait(hand, winningTile)) {
+      yaku.push({ name: '国士無双十三面待ち', han: 26 });
+    } else {
+      yaku.push({ name: '国士無双', han: 13 });
+    }
     return yaku;
   }
 
   // 四暗刻 - 13翻
   if (isSuuankou(hand, winningTile, options.isTsumo, melds)) {
-    yaku.push({ name: '四暗刻', han: 13 });
+    if (detectWaitPattern(hand, winningTile) === 'tanki') {
+      yaku.push({ name: '四暗刻単騎', han: 26 });
+    } else {
+      yaku.push({ name: '四暗刻', han: 13 });
+    }
     return yaku;
   }
 
@@ -1028,7 +1099,11 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
 
   // 九蓮宝燈 - 13翻
   if (isChuurenPoutou(hand, melds)) {
-    yaku.push({ name: '九蓮宝燈', han: 13 });
+    if (isPureChuuren(hand, winningTile, melds)) {
+      yaku.push({ name: '純正九蓮宝燈', han: 26 });
+    } else {
+      yaku.push({ name: '九蓮宝燈', han: 13 });
+    }
     return yaku;
   }
 
@@ -1041,16 +1116,41 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   // ========== 通常役のチェック ==========
 
   // リーチ（門前のみ）
-  if (options.isRiichi && isMenzenHand) {
+  let riichiApplied = false;
+  if (options.isDoubleRiichi && isMenzenHand) {
+    yaku.push({ name: 'ダブルリーチ', han: 2 });
+    riichiApplied = true;
+  } else if (options.isRiichi && isMenzenHand) {
     yaku.push({ name: 'リーチ', han: 1 });
-    if (options.isIppatsu) {
-      yaku.push({ name: '一発', han: 1 });
-    }
+    riichiApplied = true;
+  }
+  if (options.isIppatsu && riichiApplied) {
+    yaku.push({ name: '一発', han: 1 });
   }
 
   // ツモ（門前のみ）
   if (options.isTsumo && isMenzenHand) {
     yaku.push({ name: '門前清自摸和', han: 1 });
+  }
+
+  if (options.isHaitei && options.isTsumo) {
+    yaku.push({ name: '海底摸月', han: 1 });
+  }
+
+  if (options.isHoutei && !options.isTsumo) {
+    yaku.push({ name: '河底撈魚', han: 1 });
+  }
+
+  if (options.isRinshan && options.isTsumo) {
+    yaku.push({ name: '嶺上開花', han: 1 });
+  }
+
+  if (options.isChankan && !options.isTsumo) {
+    yaku.push({ name: '槍槓', han: 1 });
+  }
+
+  if (options.isNagashiMangan) {
+    yaku.push({ name: '流し満貫', han: 5 });
   }
 
   // 断么九（タンヤオ）
@@ -1101,6 +1201,14 @@ export function detectYaku(hand: Tile[], winningTile: Tile, options: AgariOption
   const ankou = countAnkou(hand);
   if (ankou === 3) {
     yaku.push({ name: '三暗刻', han: 2 });
+  }
+
+  if (isSanKantsu(melds)) {
+    yaku.push({ name: '三槓子', han: 2 });
+  }
+
+  if (isSanshokuDoukou(hand, melds)) {
+    yaku.push({ name: '三色同刻', han: 2 });
   }
 
   // 混老頭
