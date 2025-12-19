@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:tiles": "node scripts/check-tiles.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

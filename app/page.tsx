@@ -12,6 +12,7 @@ import {
   type AgariOptions,
   type CalculationResult
 } from '@/lib/mahjong';
+import TileFace from './components/TileFace';
 
 const ALL_TILES: Tile[] = [...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai];
 const HONOR_INPUT_MAP: Record<string, Tile> = {
@@ -449,7 +450,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -463,7 +464,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -477,7 +478,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -491,7 +492,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -511,7 +512,7 @@ export default function Home() {
                 className="hand-tile"
                 onClick={() => removeTileFromHand(index)}
               >
-                {TILE_DISPLAY[tile]}
+                <TileFace tile={tile} />
               </div>
             ))}
           </div>
@@ -533,7 +534,7 @@ export default function Home() {
                 <div className="meld-tiles">
                   {meld.tiles.map((tile, tileIndex) => (
                     <div key={tileIndex} className="hand-tile" style={{ fontSize: '14px' }}>
-                      {TILE_DISPLAY[tile]}
+                      <TileFace tile={tile} />
                     </div>
                   ))}
                 </div>
@@ -565,11 +566,10 @@ export default function Home() {
                 {[...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai].map(tile => (
                   <div
                     key={tile}
-                    className="tile"
-                    style={{ fontSize: '12px', padding: '3px 5px' }}
+                    className="tile tile--mini"
                     onClick={() => addTileToMeld(tile)}
                   >
-                    {TILE_DISPLAY[tile]}
+                    <TileFace tile={tile} />
                   </div>
                 ))}
               </div>
@@ -582,7 +582,7 @@ export default function Home() {
                 className="hand-tile"
                 onClick={() => removeTileFromMeld(index)}
               >
-                {TILE_DISPLAY[tile]}
+                <TileFace tile={tile} />
               </div>
             ))}
           </div>
@@ -615,7 +615,7 @@ export default function Home() {
                 className="hand-tile winning-tile"
                 onClick={removeWinningTile}
               >
-                {TILE_DISPLAY[winningTile]}
+                <TileFace tile={winningTile} />
               </div>
             )}
           </div>
@@ -919,7 +919,7 @@ export default function Home() {
                     className="hand-tile"
                     onClick={() => removeDoraTileValue(index, 'dora')}
                   >
-                    {TILE_DISPLAY[tile]}
+                    <TileFace tile={tile} />
                   </div>
                 ))}
               </div>
@@ -946,7 +946,7 @@ export default function Home() {
                     className="hand-tile"
                     onClick={() => removeDoraTileValue(index, 'ura')}
                   >
-                    {TILE_DISPLAY[tile]}
+                    <TileFace tile={tile} />
                   </div>
                 ))}
               </div>
@@ -1059,7 +1059,18 @@ export default function Home() {
                       {new Date(entry.timestamp).toLocaleString()} / {entry.result.han}翻 {entry.result.fu}符
                     </div>
                     <div className="history-hand">
-                      {entry.hand.join(' ')} | 和了牌: {entry.winningTile}
+                      <span className="history-label">手牌</span>
+                      <div className="history-tiles">
+                        {entry.hand.map((tile, index) => (
+                          <span key={`${tile}-${index}`} className="history-tile">
+                            <TileFace tile={tile} />
+                          </span>
+                        ))}
+                      </div>
+                      <span className="history-label">和了牌</span>
+                      <span className="history-tile history-tile-winning">
+                        <TileFace tile={entry.winningTile} />
+                      </span>
                     </div>
                     <div className="history-yaku">
                       {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}
@@ -1085,8 +1096,20 @@ export default function Home() {
                       <div className="history-detail-content">
                         {activeHistoryTab === 'hand' && (
                           <div>
-                            <div>手牌: {entry.hand.join(' ')}</div>
-                            <div style={{ marginTop: '4px' }}>和了牌: {entry.winningTile}</div>
+                            <div className="history-hand">
+                              <span className="history-label">手牌</span>
+                              <div className="history-tiles">
+                                {entry.hand.map((tile, index) => (
+                                  <span key={`${tile}-${index}`} className="history-tile">
+                                    <TileFace tile={tile} />
+                                  </span>
+                                ))}
+                              </div>
+                              <span className="history-label">和了牌</span>
+                              <span className="history-tile history-tile-winning">
+                                <TileFace tile={entry.winningTile} />
+                              </span>
+                            </div>
                             <div style={{ marginTop: '4px' }}>鳴き: {meldSummary}</div>
                           </div>
                         )}
