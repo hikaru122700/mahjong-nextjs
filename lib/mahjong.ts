@@ -19,6 +19,7 @@ export interface AgariOptions {
   isRiichi: boolean;
   isIppatsu: boolean;
   isMenzen: boolean;
+  isOya: boolean;
   melds?: Meld[];
   isTenhou?: boolean;
   isChiihou?: boolean;
@@ -1366,7 +1367,7 @@ export function calculateScore(
   const fu = calculateFu(fullHand, winningTile, options.isTsumo, options.isMenzen, options.bakaze, options.jikaze, melds);
 
   // 点数計算
-  const score = calculateFinalScore(totalHan, fu, options.jikaze === 'ton', options.isTsumo);
+  const score = calculateFinalScore(totalHan, fu, options.isOya, options.isTsumo);
 
   return { han: totalHan, fu, score, yaku };
 }
