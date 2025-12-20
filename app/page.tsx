@@ -90,6 +90,12 @@ const cloneOptionsForHistory = (options: AgariOptions): AgariOptions => ({
 
 const formatBooleanOption = (value?: boolean) => (value ? 'あり' : 'なし');
 
+const logClientError = (message: string, error: unknown) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(message, error);
+  }
+};
+
 export default function Home() {
   const [hand, setHand] = useState<Tile[]>([]);
   const [winningTile, setWinningTile] = useState<Tile | null>(null);
@@ -392,7 +398,7 @@ export default function Home() {
         setHistory(parsed);
       }
     } catch (e) {
-      console.error('Failed to load history from localStorage', e);
+      logClientError('Failed to load history from localStorage', e);
     }
   }, []);
 
@@ -401,7 +407,7 @@ export default function Home() {
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     } catch (e) {
-      console.error('Failed to save history to localStorage', e);
+      logClientError('Failed to save history to localStorage', e);
     }
   }, [history]);
 
