@@ -67,13 +67,21 @@ make deploy # ビルド後の本番モード起動 (npm run start)
 ```
 mahjong-nextjs/
 ├── app/
+│   ├── components/
+│   │   └── TileFace.tsx # 牌表示コンポーネント
 │   ├── layout.tsx       # レイアウトコンポーネント
 │   ├── page.tsx         # メインページ
 │   └── globals.css      # グローバルスタイル
 ├── lib/
-│   └── mahjong.ts       # 麻雀ロジック（和了判定、点数計算）
+│   ├── mahjong.ts       # 麻雀ロジック（和了判定、点数計算）
+│   └── tileAssets.ts    # 牌画像パスの管理
+├── public/
+│   └── tiles/           # 牌画像アセット
+├── scripts/
+│   └── check-tiles.mjs  # 牌画像チェック用スクリプト
 ├── package.json
 ├── tsconfig.json
+├── vitest.config.ts
 └── next.config.ts
 ```
 
