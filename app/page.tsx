@@ -131,6 +131,10 @@ export default function Home() {
     pin: false,
     sou: false
   });
+  const [redHandFlags, setRedHandFlags] = useState<boolean[]>([]);
+  const [redMeldInputFlags, setRedMeldInputFlags] = useState<boolean[]>([]);
+  const [redMeldFlags, setRedMeldFlags] = useState<boolean[][]>([]);
+  const [redWinningFlag, setRedWinningFlag] = useState<boolean>(false);
   const [tileInput, setTileInput] = useState<string>('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
@@ -150,11 +154,35 @@ export default function Home() {
   const getTileCount = (tile: Tile, options?: { includeWinningTile?: boolean }) =>
     getAllSelectedTiles(options).filter(t => t === tile).length;
 
-  const isRedTile = (tile: Tile) => (
-    (tile === '5m' && akaDora.man) ||
-    (tile === '5p' && akaDora.pin) ||
-    (tile === '5s' && akaDora.sou)
-  );
+  const sortHandWithFlags = (tiles: Tile[], flags: boolean[]) => {
+    const combined = tiles.map((tile, index) => ({ tile, isRed: flags[index] ?? false }));
+    const sortedTiles = sortHand(tiles);
+    const used = new Array(combined.length).fill(false);
+    const sortedFlags: boolean[] = [];
+
+    sortedTiles.forEach(tile => {
+      const matchIndex = combined.findIndex((item, index) => !used[index] && item.tile === tile);
+      if (matchIndex >= 0) {
+        used[matchIndex] = true;
+        sortedFlags.push(combined[matchIndex].isRed);
+      } else {
+        sortedFlags.push(false);
+      }
+    });
+
+    return { tiles: sortedTiles, flags: sortedFlags };
+  };
+
+  const hasRedSelection = (suit: RedSuit) => {
+    const targetTile: Tile = suit === 'man' ? '5m' : suit === 'pin' ? '5p' : '5s';
+    const inHand = redHandFlags.some((isRed, index) => isRed && hand[index] === targetTile);
+    const inWinning = redWinningFlag && winningTile === targetTile;
+    const inMeldInput = redMeldInputFlags.some((isRed, index) => isRed && meldInput[index] === targetTile);
+    const inMelds = redMeldFlags.some((flags, meldIndex) =>
+      flags?.some((isRed, tileIndex) => isRed && melds[meldIndex]?.tiles[tileIndex] === targetTile)
+    );
+    return inHand || inWinning || inMeldInput || inMelds;
+  };
 
   const exceedsTileLimit = (tile: Tile, options?: { includeWinningTile?: boolean }) => {
     const count = getAllSelectedTiles(options).filter(t => t === tile).length;
@@ -251,7 +279,8 @@ export default function Home() {
     setIsDoubleRiichi(Boolean(entry.options.isDoubleRiichi));
     setIppatsu(entry.options.isIppatsu);
     setIsDealer(entry.options.isOya);
-    setMelds(entry.options.melds ? entry.options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : []);
+    const restoredMelds = entry.options.melds ? entry.options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : [];
+    setMelds(restoredMelds);
     setIsTenhou(Boolean(entry.options.isTenhou));
     setIsChiihou(Boolean(entry.options.isChiihou));
     setIsHaitei(Boolean(entry.options.isHaitei));
@@ -261,11 +290,46 @@ export default function Home() {
     setIsNagashiMangan(Boolean(entry.options.isNagashiMangan));
     setDoraTiles(entry.options.doraTiles || []);
     setUraDoraTiles(entry.options.uraDoraTiles || []);
-    setAkaDora({
+    const nextAkaDora = {
       man: Boolean(entry.options.redDora?.man),
       pin: Boolean(entry.options.redDora?.pin),
       sou: Boolean(entry.options.redDora?.sou)
-    });
+    };
+    setAkaDora(nextAkaDora);
+
+    const nextRedHandFlags = entry.hand.map(() => false);
+    const nextRedMeldFlags = restoredMelds.map(meld => meld.tiles.map(() => false));
+    let nextRedWinningFlag = false;
+
+    const applyRedFlag = (tile: Tile, enabled: boolean) => {
+      if (!enabled) return;
+      const handIndex = entry.hand.findIndex((t, index) => t === tile && !nextRedHandFlags[index]);
+      if (handIndex >= 0) {
+        nextRedHandFlags[handIndex] = true;
+        return;
+      }
+      if (!nextRedWinningFlag && entry.winningTile === tile) {
+        nextRedWinningFlag = true;
+        return;
+      }
+      for (let meldIndex = 0; meldIndex < restoredMelds.length; meldIndex++) {
+        const meld = restoredMelds[meldIndex];
+        const tileIndex = meld.tiles.findIndex((t, index) => t === tile && !nextRedMeldFlags[meldIndex][index]);
+        if (tileIndex >= 0) {
+          nextRedMeldFlags[meldIndex][tileIndex] = true;
+          return;
+        }
+      }
+    };
+
+    applyRedFlag('5m', nextAkaDora.man);
+    applyRedFlag('5p', nextAkaDora.pin);
+    applyRedFlag('5s', nextAkaDora.sou);
+
+    setRedHandFlags(nextRedHandFlags);
+    setRedMeldInputFlags([]);
+    setRedMeldFlags(nextRedMeldFlags);
+    setRedWinningFlag(nextRedWinningFlag);
     setResult(entry.result);
     setError('');
     setActiveHistoryId(entry.id);
@@ -328,29 +392,15 @@ export default function Home() {
   }, [history]);
 
   useEffect(() => {
-    const tiles = getAllSelectedTiles();
-    const has5m = tiles.includes('5m');
-    const has5p = tiles.includes('5p');
-    const has5s = tiles.includes('5s');
-
-    setAkaDora(prev => {
-      const next = { ...prev };
-      let changed = false;
-      if (!has5m && prev.man) {
-        next.man = false;
-        changed = true;
-      }
-      if (!has5p && prev.pin) {
-        next.pin = false;
-        changed = true;
-      }
-      if (!has5s && prev.sou) {
-        next.sou = false;
-        changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [hand, melds, meldInput, winningTile]);
+    const next = {
+      man: hasRedSelection('man'),
+      pin: hasRedSelection('pin'),
+      sou: hasRedSelection('sou')
+    };
+    setAkaDora(prev =>
+      prev.man === next.man && prev.pin === next.pin && prev.sou === next.sou ? prev : next
+    );
+  }, [hand, melds, meldInput, winningTile, redHandFlags, redMeldInputFlags, redMeldFlags, redWinningFlag]);
 
   const addTileToHand = (tile: Tile): boolean => {
     const meldTileCount = getMeldTileCount(melds);
@@ -361,13 +411,16 @@ export default function Home() {
         return false;
       }
       setWinningTile(tile);
+      setRedWinningFlag(false);
       setError('');
       return true;
     }
     if (exceedsTileLimit(tile)) {
       return false;
     }
-    setHand(sortHand([...hand, tile]));
+    const sorted = sortHandWithFlags([...hand, tile], [...redHandFlags, false]);
+    setHand(sorted.tiles);
+    setRedHandFlags(sorted.flags);
     setError('');
     return true;
   };
@@ -379,6 +432,7 @@ export default function Home() {
         return false;
       }
       setMeldInput([...meldInput, tile]);
+      setRedMeldInputFlags([...redMeldInputFlags, false]);
       setError('');
       return true;
     }
@@ -386,23 +440,45 @@ export default function Home() {
   };
 
   const addRedTileToHand = (tile: Tile, suit: RedSuit) => {
-    if (akaDora[suit]) {
+    if (hasRedSelection(suit)) {
       setError(`${TILE_DISPLAY[tile]}は1枚まで選択できます`);
       return;
     }
-    const added = addTileToHand(tile);
-    if (added) {
+    const meldTileCount = getMeldTileCount(melds);
+    const maxHandSize = 14 - meldTileCount - 1;
+    if (hand.length >= maxHandSize) {
+      if (exceedsTileLimit(tile, { includeWinningTile: false })) {
+        return;
+      }
+      setWinningTile(tile);
+      setRedWinningFlag(true);
+      setError('');
       setAkaDora(prev => ({ ...prev, [suit]: true }));
+      return;
     }
+    if (exceedsTileLimit(tile)) {
+      return;
+    }
+    const sorted = sortHandWithFlags([...hand, tile], [...redHandFlags, true]);
+    setHand(sorted.tiles);
+    setRedHandFlags(sorted.flags);
+    setError('');
+    setAkaDora(prev => ({ ...prev, [suit]: true }));
   };
 
   const addRedTileToMeld = (tile: Tile, suit: RedSuit) => {
-    if (akaDora[suit]) {
+    if (hasRedSelection(suit)) {
       setError(`${TILE_DISPLAY[tile]}は1枚まで選択できます`);
       return;
     }
-    const added = addTileToMeld(tile);
-    if (added) {
+    const requiredTiles = meldType === 'ankan' || meldType === 'minkan' ? 4 : 3;
+    if (meldInput.length < requiredTiles) {
+      if (exceedsTileLimit(tile)) {
+        return;
+      }
+      setMeldInput([...meldInput, tile]);
+      setRedMeldInputFlags([...redMeldInputFlags, true]);
+      setError('');
       setAkaDora(prev => ({ ...prev, [suit]: true }));
     }
   };
@@ -411,6 +487,9 @@ export default function Home() {
     const newMeldInput = [...meldInput];
     newMeldInput.splice(index, 1);
     setMeldInput(newMeldInput);
+    const newRedFlags = [...redMeldInputFlags];
+    newRedFlags.splice(index, 1);
+    setRedMeldInputFlags(newRedFlags);
   };
 
   const addMeld = () => {
@@ -420,7 +499,9 @@ export default function Home() {
       return;
     }
     setMelds([...melds, { type: meldType, tiles: meldInput }]);
+    setRedMeldFlags([...redMeldFlags, [...redMeldInputFlags]]);
     setMeldInput([]);
+    setRedMeldInputFlags([]);
     setError('');
   };
 
@@ -428,10 +509,14 @@ export default function Home() {
     const newMelds = [...melds];
     newMelds.splice(index, 1);
     setMelds(newMelds);
+    const newRedMelds = [...redMeldFlags];
+    newRedMelds.splice(index, 1);
+    setRedMeldFlags(newRedMelds);
   };
 
   const setWinningTileHandler = (tile: Tile) => {
     setWinningTile(tile);
+    setRedWinningFlag(false);
     setError('');
   };
 
@@ -439,10 +524,14 @@ export default function Home() {
     const newHand = [...hand];
     newHand.splice(index, 1);
     setHand(newHand);
+    const newRedFlags = [...redHandFlags];
+    newRedFlags.splice(index, 1);
+    setRedHandFlags(newRedFlags);
   };
 
   const removeWinningTile = () => {
     setWinningTile(null);
+    setRedWinningFlag(false);
   };
 
   const clearAll = () => {
@@ -469,6 +558,10 @@ export default function Home() {
     setDoraTiles([]);
     setUraDoraTiles([]);
     setAkaDora({ man: false, pin: false, sou: false });
+    setRedHandFlags([]);
+    setRedMeldInputFlags([]);
+    setRedMeldFlags([]);
+    setRedWinningFlag(false);
   };
 
   const getDoraFromIndicator = (tile: Tile): Tile => {
@@ -670,15 +763,15 @@ export default function Home() {
               <div className="hand-summary-column">
                 <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - getMeldTileCount(melds) - 1}枚)</div>
                 <div className="hand-tiles">
-                  {hand.map((tile, index) => (
-                    <div
-                      key={index}
-                      className={`hand-tile${isRedTile(tile) ? ' hand-tile--red' : ''}`}
-                      onClick={() => removeTileFromHand(index)}
-                    >
-                      <TileFace tile={tile} />
-                    </div>
-                  ))}
+                {hand.map((tile, index) => (
+                  <div
+                    key={index}
+                    className={`hand-tile${redHandFlags[index] ? ' hand-tile--red' : ''}`}
+                    onClick={() => removeTileFromHand(index)}
+                  >
+                    <TileFace tile={tile} />
+                  </div>
+                ))}
                 </div>
                 <div className="info-text">※ 手牌は自動的にソートされます。</div>
               </div>
@@ -687,7 +780,7 @@ export default function Home() {
                 <div className="hand-tiles">
                   {winningTile ? (
                     <div
-                      className={`hand-tile winning-tile${isRedTile(winningTile) ? ' hand-tile--red' : ''}`}
+                      className={`hand-tile winning-tile${redWinningFlag ? ' hand-tile--red' : ''}`}
                       onClick={removeWinningTile}
                     >
                       <TileFace tile={winningTile} />
@@ -713,7 +806,7 @@ export default function Home() {
                         {meld.tiles.map((tile, tileIndex) => (
                           <div
                             key={tileIndex}
-                            className={`hand-tile${isRedTile(tile) ? ' hand-tile--red' : ''}`}
+                            className={`hand-tile${redMeldFlags[index]?.[tileIndex] ? ' hand-tile--red' : ''}`}
                             style={{ fontSize: '14px' }}
                           >
                             <TileFace tile={tile} />
@@ -777,7 +870,7 @@ export default function Home() {
                 {meldInput.map((tile, index) => (
                   <div
                     key={index}
-                    className="hand-tile"
+                    className={`hand-tile${redMeldInputFlags[index] ? ' hand-tile--red' : ''}`}
                     onClick={() => removeTileFromMeld(index)}
                   >
                     <TileFace tile={tile} />
@@ -794,7 +887,10 @@ export default function Home() {
                 </button>
                 <button
                   className="btn"
-                  onClick={() => setMeldInput([])}
+                  onClick={() => {
+                    setMeldInput([]);
+                    setRedMeldInputFlags([]);
+                  }}
                   disabled={meldInput.length === 0}
                 >
                   入力をクリア
@@ -1268,14 +1364,14 @@ export default function Home() {
                   {hand.map((tile, index) => (
                     <span
                       key={`${tile}-${index}`}
-                      className={`history-tile${isRedTile(tile) ? ' history-tile--red' : ''}`}
+                      className={`history-tile${redHandFlags[index] ? ' history-tile--red' : ''}`}
                     >
                       <TileFace tile={tile} />
                     </span>
                   ))}
                 </div>
                 <span className="history-label">和了牌</span>
-                <span className={`history-tile history-tile-winning${winningTile && isRedTile(winningTile) ? ' history-tile--red' : ''}`}>
+                <span className={`history-tile history-tile-winning${redWinningFlag ? ' history-tile--red' : ''}`}>
                   {winningTile ? <TileFace tile={winningTile} /> : '未選択'}
                 </span>
               </div>
