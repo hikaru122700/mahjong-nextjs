@@ -85,8 +85,7 @@ export default function ScoreQuizPage() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answer, setAnswer] = useState({
     ron: '',
-    tsumoKo: '',
-    tsumoOya: '',
+    tsumoTotal: '',
     tsumoAll: ''
   });
   const [judgeResult, setJudgeResult] = useState<{ ok: boolean; expectedText: string } | null>(null);
@@ -116,10 +115,9 @@ export default function ScoreQuizPage() {
       const input = Number(answer.tsumoAll);
       return !Number.isNaN(input) && input === expected.perPerson;
     }
-    const inputKo = Number(answer.tsumoKo);
-    const inputOya = Number(answer.tsumoOya);
-    return !Number.isNaN(inputKo) && !Number.isNaN(inputOya)
-      && inputKo === expected.ko && inputOya === expected.oya;
+    const inputTotal = Number(answer.tsumoTotal);
+    const total = expected.ko * 2 + expected.oya;
+    return !Number.isNaN(inputTotal) && inputTotal === total;
   };
 
   const handleJudge = (choice: 'ok' | 'ng') => {
@@ -134,7 +132,7 @@ export default function ScoreQuizPage() {
       ? Math.floor(Math.random() * QUESTIONS.length)
       : 0;
     setQuestionIndex(next);
-    setAnswer({ ron: '', tsumoKo: '', tsumoOya: '', tsumoAll: '' });
+    setAnswer({ ron: '', tsumoTotal: '', tsumoAll: '' });
     setJudgeResult(null);
   };
 
@@ -167,24 +165,14 @@ export default function ScoreQuizPage() {
       );
     }
     return (
-      <div style={{ display: 'grid', gap: '8px' }}>
-        <label className="checkbox-label">
-          ツモ（子の支払い）
-          <input
-            type="number"
-            value={answer.tsumoKo}
-            onChange={(e) => setAnswer(prev => ({ ...prev, tsumoKo: e.target.value }))}
-          />
-        </label>
-        <label className="checkbox-label">
-          ツモ（親の支払い）
-          <input
-            type="number"
-            value={answer.tsumoOya}
-            onChange={(e) => setAnswer(prev => ({ ...prev, tsumoOya: e.target.value }))}
-          />
-        </label>
-      </div>
+      <label className="checkbox-label">
+        ツモ合計
+        <input
+          type="number"
+          value={answer.tsumoTotal}
+          onChange={(e) => setAnswer(prev => ({ ...prev, tsumoTotal: e.target.value }))}
+        />
+      </label>
     );
   };
 
