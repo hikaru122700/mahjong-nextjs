@@ -30,6 +30,7 @@ const RED_TILES = [
 ] as const;
 
 type RedSuit = (typeof RED_TILES)[number]['suit'];
+type ParsedTile = { num: number; suit: string } | null;
 
 interface HistoryEntry {
   id: string;
@@ -135,6 +136,30 @@ export default function Home() {
 
   const getTileCount = (tile: Tile, options?: { includeWinningTile?: boolean }) =>
     getAllSelectedTiles(options).filter(t => t === tile).length;
+
+  const parseTile = (tile: Tile): ParsedTile => {
+    if (tile.length !== 2) return null;
+    const num = parseInt(tile[0], 10);
+    if (Number.isNaN(num)) return null;
+    return { num, suit: tile[1] };
+  };
+
+  const isValidMeld = (type: MeldType, tiles: Tile[]) => {
+    if (type === 'pon') {
+      return tiles.length === 3 && tiles.every(tile => tile === tiles[0]);
+    }
+    if (type === 'minkan' || type === 'ankan') {
+      return tiles.length === 4 && tiles.every(tile => tile === tiles[0]);
+    }
+    if (type !== 'chii') return false;
+    if (tiles.length !== 3) return false;
+    const parsed = tiles.map(parseTile);
+    if (parsed.some(item => !item)) return false;
+    const suits = new Set(parsed.map(item => item!.suit));
+    if (suits.size !== 1) return false;
+    const numbers = parsed.map(item => item!.num).sort((a, b) => a - b);
+    return numbers[0] + 1 === numbers[1] && numbers[1] + 1 === numbers[2];
+  };
 
   const sortHandWithFlags = (tiles: Tile[], flags: boolean[]) => {
     const combined = tiles.map((tile, index) => ({ tile, isRed: flags[index] ?? false }));
@@ -500,6 +525,16 @@ export default function Home() {
     const requiredTiles = meldType === 'ankan' || meldType === 'minkan' ? 4 : 3;
     if (meldInput.length !== requiredTiles) {
       setError(`${requiredTiles}枚の牌を選択してください`);
+      return;
+    }
+    if (!isValidMeld(meldType, meldInput)) {
+      if (meldType === 'chii') {
+        setError('チーは同一種の連続した3枚で選択してください');
+      } else if (meldType === 'pon') {
+        setError('ポンは同一牌3枚で選択してください');
+      } else {
+        setError('カンは同一牌4枚で選択してください');
+      }
       return;
     }
     setMelds([...melds, { type: meldType, tiles: meldInput }]);
