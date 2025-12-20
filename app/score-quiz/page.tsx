@@ -222,6 +222,14 @@ export default function ScoreQuizPage() {
             <div>門前: {question.options.isMenzen ? 'あり' : 'なし'}</div>
           </div>
         </div>
+        <div className="hand-display">
+          <div className="hand-title">候補点数</div>
+          {expectedText ? (
+            <div className="info-text">{expectedText}</div>
+          ) : (
+            <div className="info-text">未計算</div>
+          )}
+        </div>
       </div>
 
       <div className="section compact">
