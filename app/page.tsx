@@ -730,26 +730,31 @@ export default function Home() {
                   {TILES.manzu.map(tile => {
                     const isMaxed = getTileCount(tile) >= 4;
                     return (
-                      <div
+                      <button
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
                         onClick={() => handleTileSelect(tile)}
-                        aria-disabled={isMaxed}
+                        disabled={isMaxed}
+                        aria-label={`${TILE_DISPLAY[tile]}${isMaxed ? '（選択不可）' : ''}`}
+                        type="button"
                       >
                         <TileFace tile={tile} />
-                      </div>
+                      </button>
                     );
                   })}
                   {RED_TILES.filter(tile => tile.suit === 'man').map(tile => (
-                    <div
+                    <button
                       key={tile.label}
                       className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
                       onClick={() => handleRedTileSelect(tile.tile, tile.suit)}
                       title={tile.label}
+                      type="button"
+                      disabled={getTileCount(tile.tile) >= 4}
+                      aria-label={`${TILE_DISPLAY[tile.tile]}（赤）${getTileCount(tile.tile) >= 4 ? '（選択不可）' : ''}`}
                     >
                       <TileFace tile={tile.tile} />
                       <span className="tile-badge">赤</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -759,26 +764,31 @@ export default function Home() {
                   {TILES.pinzu.map(tile => {
                     const isMaxed = getTileCount(tile) >= 4;
                     return (
-                      <div
+                      <button
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
                         onClick={() => handleTileSelect(tile)}
-                        aria-disabled={isMaxed}
+                        disabled={isMaxed}
+                        aria-label={`${TILE_DISPLAY[tile]}${isMaxed ? '（選択不可）' : ''}`}
+                        type="button"
                       >
                         <TileFace tile={tile} />
-                      </div>
+                      </button>
                     );
                   })}
                   {RED_TILES.filter(tile => tile.suit === 'pin').map(tile => (
-                    <div
+                    <button
                       key={tile.label}
                       className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
                       onClick={() => handleRedTileSelect(tile.tile, tile.suit)}
                       title={tile.label}
+                      type="button"
+                      disabled={getTileCount(tile.tile) >= 4}
+                      aria-label={`${TILE_DISPLAY[tile.tile]}（赤）${getTileCount(tile.tile) >= 4 ? '（選択不可）' : ''}`}
                     >
                       <TileFace tile={tile.tile} />
                       <span className="tile-badge">赤</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -788,26 +798,31 @@ export default function Home() {
                   {TILES.souzu.map(tile => {
                     const isMaxed = getTileCount(tile) >= 4;
                     return (
-                      <div
+                      <button
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
                         onClick={() => handleTileSelect(tile)}
-                        aria-disabled={isMaxed}
+                        disabled={isMaxed}
+                        aria-label={`${TILE_DISPLAY[tile]}${isMaxed ? '（選択不可）' : ''}`}
+                        type="button"
                       >
                         <TileFace tile={tile} />
-                      </div>
+                      </button>
                     );
                   })}
                   {RED_TILES.filter(tile => tile.suit === 'sou').map(tile => (
-                    <div
+                    <button
                       key={tile.label}
                       className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
                       onClick={() => handleRedTileSelect(tile.tile, tile.suit)}
                       title={tile.label}
+                      type="button"
+                      disabled={getTileCount(tile.tile) >= 4}
+                      aria-label={`${TILE_DISPLAY[tile.tile]}（赤）${getTileCount(tile.tile) >= 4 ? '（選択不可）' : ''}`}
                     >
                       <TileFace tile={tile.tile} />
                       <span className="tile-badge">赤</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -817,14 +832,16 @@ export default function Home() {
                   {TILES.jihai.map(tile => {
                     const isMaxed = getTileCount(tile) >= 4;
                     return (
-                      <div
+                      <button
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
                         onClick={() => handleTileSelect(tile)}
-                        aria-disabled={isMaxed}
+                        disabled={isMaxed}
+                        aria-label={`${TILE_DISPLAY[tile]}${isMaxed ? '（選択不可）' : ''}`}
+                        type="button"
                       >
                         <TileFace tile={tile} />
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

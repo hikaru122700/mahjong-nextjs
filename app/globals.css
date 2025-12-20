@@ -121,11 +121,17 @@ h1 {
   justify-content: center;
   cursor: pointer;
   background: white;
+  padding: 0;
+  appearance: none;
   font-size: clamp(1em, 3.5vw, 1.3em);
   font-weight: bold;
   transition: all 0.2s;
   user-select: none;
   position: relative;
+}
+
+.tile:disabled {
+  cursor: not-allowed;
 }
 
 .tile-image,
