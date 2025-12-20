@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   TILES,
   TILE_DISPLAY,
@@ -39,6 +39,9 @@ interface HistoryEntry {
   winningTile: Tile;
   options: AgariOptions;
   result: CalculationResult;
+  redHandFlags?: boolean[];
+  redMeldFlags?: boolean[][];
+  redWinningFlag?: boolean;
 }
 
 const HISTORY_KEY = 'mahjong-history';
@@ -180,7 +183,7 @@ export default function Home() {
     return { tiles: sortedTiles, flags: sortedFlags };
   };
 
-  const hasRedSelection = (suit: RedSuit) => {
+  const hasRedSelection = useCallback((suit: RedSuit) => {
     const targetTile: Tile = suit === 'man' ? '5m' : suit === 'pin' ? '5p' : '5s';
     const inHand = redHandFlags.some((isRed, index) => isRed && hand[index] === targetTile);
     const inWinning = redWinningFlag && winningTile === targetTile;
@@ -189,7 +192,7 @@ export default function Home() {
       flags?.some((isRed, tileIndex) => isRed && melds[meldIndex]?.tiles[tileIndex] === targetTile)
     );
     return inHand || inWinning || inMeldInput || inMelds;
-  };
+  }, [hand, melds, meldInput, winningTile, redHandFlags, redMeldInputFlags, redMeldFlags, redWinningFlag]);
 
   const exceedsTileLimit = (tile: Tile, options?: { includeWinningTile?: boolean }) => {
     const count = getAllSelectedTiles(options).filter(t => t === tile).length;
@@ -254,7 +257,10 @@ export default function Home() {
       hand: [...hand],
       winningTile,
       options: cloneOptionsForHistory(optionsSnapshot),
-      result: calcResult
+      result: calcResult,
+      redHandFlags: [...redHandFlags],
+      redMeldFlags: redMeldFlags.map(flags => [...flags]),
+      redWinningFlag
     };
     setHistory(prev => {
       const updated = [entry, ...prev];
@@ -291,34 +297,38 @@ export default function Home() {
     setKyotakuCount(Math.max(0, Math.floor(entry.options.kyotaku ?? 0)));
     setHonbaCount(Math.max(0, Math.floor(entry.options.honba ?? 0)));
 
-    const nextRedHandFlags = entry.hand.map(() => false);
-    const nextRedMeldFlags = restoredMelds.map(meld => meld.tiles.map(() => false));
-    let nextRedWinningFlag = false;
+    const nextRedHandFlags = entry.redHandFlags ? [...entry.redHandFlags] : entry.hand.map(() => false);
+    const nextRedMeldFlags = entry.redMeldFlags
+      ? entry.redMeldFlags.map(flags => [...flags])
+      : restoredMelds.map(meld => meld.tiles.map(() => false));
+    let nextRedWinningFlag = entry.redWinningFlag ?? false;
 
-    const applyRedFlag = (tile: Tile, enabled: boolean) => {
-      if (!enabled) return;
-      const handIndex = entry.hand.findIndex((t, index) => t === tile && !nextRedHandFlags[index]);
-      if (handIndex >= 0) {
-        nextRedHandFlags[handIndex] = true;
-        return;
-      }
-      if (!nextRedWinningFlag && entry.winningTile === tile) {
-        nextRedWinningFlag = true;
-        return;
-      }
-      for (let meldIndex = 0; meldIndex < restoredMelds.length; meldIndex++) {
-        const meld = restoredMelds[meldIndex];
-        const tileIndex = meld.tiles.findIndex((t, index) => t === tile && !nextRedMeldFlags[meldIndex][index]);
-        if (tileIndex >= 0) {
-          nextRedMeldFlags[meldIndex][tileIndex] = true;
+    if (!entry.redHandFlags && !entry.redMeldFlags && entry.options.redDora) {
+      const applyRedFlag = (tile: Tile, enabled: boolean) => {
+        if (!enabled) return;
+        const handIndex = entry.hand.findIndex((t, index) => t === tile && !nextRedHandFlags[index]);
+        if (handIndex >= 0) {
+          nextRedHandFlags[handIndex] = true;
           return;
         }
-      }
-    };
+        if (!nextRedWinningFlag && entry.winningTile === tile) {
+          nextRedWinningFlag = true;
+          return;
+        }
+        for (let meldIndex = 0; meldIndex < restoredMelds.length; meldIndex++) {
+          const meld = restoredMelds[meldIndex];
+          const tileIndex = meld.tiles.findIndex((t, index) => t === tile && !nextRedMeldFlags[meldIndex][index]);
+          if (tileIndex >= 0) {
+            nextRedMeldFlags[meldIndex][tileIndex] = true;
+            return;
+          }
+        }
+      };
 
-    applyRedFlag('5m', nextAkaDora.man);
-    applyRedFlag('5p', nextAkaDora.pin);
-    applyRedFlag('5s', nextAkaDora.sou);
+      applyRedFlag('5m', nextAkaDora.man);
+      applyRedFlag('5p', nextAkaDora.pin);
+      applyRedFlag('5s', nextAkaDora.sou);
+    }
 
     setRedHandFlags(nextRedHandFlags);
     setRedMeldInputFlags([]);
