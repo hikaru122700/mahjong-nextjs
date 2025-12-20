@@ -229,6 +229,22 @@ describe('calculateFinalScoreWithBonus', () => {
   });
 });
 
+describe('yakuhai bakaze pei', () => {
+  it('recognizes bakaze pei as yakuhai', () => {
+    const fullHand: Tile[] = ['北', '北', '北', '1m', '2m', '3m', '4m', '5m', '6m', '7p', '8p', '9p', '2s', '2s'];
+    const yaku = detectYaku(fullHand, '2s', { ...baseOptions, bakaze: 'pei', jikaze: 'ton' });
+    const yakuNames = yaku.map(item => item.name);
+    expect(yakuNames).toContain('場風 北');
+  });
+
+  it('counts double yakuhai when bakaze and jikaze are pei', () => {
+    const fullHand: Tile[] = ['北', '北', '北', '1m', '2m', '3m', '4m', '5m', '6m', '7p', '8p', '9p', '2s', '2s'];
+    const yaku = detectYaku(fullHand, '2s', { ...baseOptions, bakaze: 'pei', jikaze: 'pei' });
+    const yakuNames = yaku.map(item => item.name);
+    expect(yakuNames).toContain('場風・自風 北');
+  });
+});
+
 describe('calculateScore validations', () => {
   it('errors when hand size is invalid', () => {
     const result = calculateScore(['1m', '2m'], '3m', baseOptions);

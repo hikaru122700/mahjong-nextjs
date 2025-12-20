@@ -680,7 +680,7 @@ function detectYakuhai(hand: Tile[], bakaze: string, jikaze: string, melds?: Mel
   if (tileCounts['中'] >= 3) yaku.push({ name: '中', han: 1 });
 
   // 場風と自風
-  const bakazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西' };
+  const bakazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
   const jikazeMap: Record<string, string> = { ton: '東', nan: '南', sha: '西', pei: '北' };
   const bakazeTile = bakazeMap[bakaze];
   const jikazeTile = jikazeMap[jikaze];
