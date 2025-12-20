@@ -12,6 +12,7 @@ import {
   type AgariOptions,
   type CalculationResult
 } from '@/lib/mahjong';
+import Link from 'next/link';
 import TileFace from './components/TileFace';
 import TileBack from './components/TileBack';
 const HONOR_INPUT_MAP: Record<string, Tile> = {
@@ -596,6 +597,9 @@ export default function Home() {
   return (
     <div className="container">
       <h1>🀄 麻雀点数計算機</h1>
+      <div className="controls" style={{ justifyContent: 'center' }}>
+        <Link className="btn btn-secondary" href="/score-quiz">点数○×ゲームへ</Link>
+      </div>
 
       <div className="layout-grid">
         <div className="layout-left">
