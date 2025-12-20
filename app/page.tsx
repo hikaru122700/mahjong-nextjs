@@ -440,588 +440,594 @@ export default function Home() {
     <div className="container">
       <h1>🀄 麻雀点数計算機</h1>
 
-      {/* 牌選択セクション */}
-      <div className="section">
-        <div className="section-title">牌を選択</div>
-        <div className="tile-selector">
-          <div className="tile-group">
-            <div className="tile-group-title">萬子（マンズ）</div>
-            <div className="tiles">
-              {TILES.manzu.map(tile => (
-                <div
-                  key={tile}
-                  className="tile"
-                  onClick={() => addTileToHand(tile)}
-                >
-                  <TileFace tile={tile} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="tile-group">
-            <div className="tile-group-title">筒子（ピンズ）</div>
-            <div className="tiles">
-              {TILES.pinzu.map(tile => (
-                <div
-                  key={tile}
-                  className="tile"
-                  onClick={() => addTileToHand(tile)}
-                >
-                  <TileFace tile={tile} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="tile-group">
-            <div className="tile-group-title">索子（ソーズ）</div>
-            <div className="tiles">
-              {TILES.souzu.map(tile => (
-                <div
-                  key={tile}
-                  className="tile"
-                  onClick={() => addTileToHand(tile)}
-                >
-                  <TileFace tile={tile} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="tile-group">
-            <div className="tile-group-title">字牌</div>
-            <div className="tiles">
-              {TILES.jihai.map(tile => (
-                <div
-                  key={tile}
-                  className="tile"
-                  onClick={() => addTileToHand(tile)}
-                >
-                  <TileFace tile={tile} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 現在の手牌表示 */}
-      <div className="section">
-        <div className="section-title">現在の手牌</div>
-        <div className="hand-display">
-          <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - getMeldTileCount(melds) - 1}枚)</div>
-          <div className="hand-tiles">
-            {hand.map((tile, index) => (
-              <div
-                key={index}
-                className="hand-tile"
-                onClick={() => removeTileFromHand(index)}
-              >
-                <TileFace tile={tile} />
-              </div>
-            ))}
-          </div>
-          <div className="info-text">※ 手牌は自動的にソートされます。</div>
-        </div>
-
-        {/* 鳴き表示 */}
-        <div className="hand-display" style={{ marginTop: '15px' }}>
-          <div className="hand-title">鳴き（副露） (<span>{melds.length}</span>回）</div>
-          <div className="melds-container">
-            {melds.map((meld, index) => (
-              <div key={index} className="meld-group" onClick={() => removeMeld(index)}>
-                <div className="meld-type">
-                  {meld.type === 'chii' && 'チー'}
-                  {meld.type === 'pon' && 'ポン'}
-                  {meld.type === 'minkan' && '明カン'}
-                  {meld.type === 'ankan' && '暗カン'}
-                </div>
-                <div className="meld-tiles">
-                  {meld.tiles.map((tile, tileIndex) => (
-                    <div key={tileIndex} className="hand-tile" style={{ fontSize: '14px' }}>
+      <div className="layout-grid">
+        <div className="layout-left">
+          {/* 牌選択セクション */}
+          <div className="section compact">
+            <div className="section-title">牌を選択</div>
+            <div className="tile-selector">
+              <div className="tile-group">
+                <div className="tile-group-title">萬子（マンズ）</div>
+                <div className="tiles">
+                  {TILES.manzu.map(tile => (
+                    <div
+                      key={tile}
+                      className="tile"
+                      onClick={() => addTileToHand(tile)}
+                    >
                       <TileFace tile={tile} />
                     </div>
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-          <div className="info-text">※ クリックして削除できます。</div>
-        </div>
-
-        {/* 鳴き入力 */}
-        <div className="hand-display" style={{ marginTop: '15px' }}>
-          <div className="hand-title">鳴きを追加</div>
-          <div className="option-group" style={{ marginBottom: '10px' }}>
-            <select
-              value={meldType}
-              onChange={(e) => setMeldType(e.target.value as MeldType)}
-              style={{ padding: '5px', fontSize: '14px' }}
-            >
-              <option value="chii">チー（順子）</option>
-              <option value="pon">ポン（刻子）</option>
-              <option value="minkan">明カン（槓子）</option>
-              <option value="ankan">暗カン（槓子）</option>
-            </select>
-          </div>
-          <div className="tile-selector" style={{ fontSize: '12px', marginBottom: '10px' }}>
-            <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>牌を選択:</div>
-            <div className="tile-group">
-              <div className="tiles">
-                {[...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai].map(tile => (
-                  <div
-                    key={tile}
-                    className="tile tile--mini"
-                    onClick={() => addTileToMeld(tile)}
-                  >
-                    <TileFace tile={tile} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="hand-tiles">
-            {meldInput.map((tile, index) => (
-              <div
-                key={index}
-                className="hand-tile"
-                onClick={() => removeTileFromMeld(index)}
-              >
-                <TileFace tile={tile} />
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-            <button
-              className="btn btn-primary"
-              onClick={addMeld}
-              disabled={meldInput.length === 0}
-            >
-              鳴きを確定
-            </button>
-            <button
-              className="btn"
-              onClick={() => setMeldInput([])}
-              disabled={meldInput.length === 0}
-            >
-              入力をクリア
-            </button>
-          </div>
-          <div className="info-text" style={{ marginTop: '10px' }}>
-            ※ チー・ポンは3枚、カンは4枚選択してください。
-          </div>
-        </div>
-
-        <div className="hand-display" style={{ marginTop: '15px' }}>
-          <div className="hand-title">和了牌 (<span>{winningTile ? 1 : 0}</span>/1枚)</div>
-          <div className="hand-tiles">
-            {winningTile && (
-              <div
-                className="hand-tile winning-tile"
-                onClick={removeWinningTile}
-              >
-                <TileFace tile={winningTile} />
-              </div>
-            )}
-          </div>
-          <div className="info-text">※ 和了した牌を1枚選択してください。</div>
-        </div>
-        <div className="controls">
-          <button className="btn btn-danger" onClick={clearAll}>すべてクリア</button>
-        </div>
-      </div>
-
-      {/* オプション設定 */}
-      <div className="section">
-        <div className="section-title">和了条件</div>
-        <div className="options">
-          <div className="option-group">
-            <div className="option-title">和了方法</div>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="agari-type"
-                  value="tsumo"
-                  checked={agariType === 'tsumo'}
-                  onChange={(e) => setAgariType(e.target.value as 'tsumo' | 'ron')}
-                />
-                ツモ
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="agari-type"
-                  value="ron"
-                  checked={agariType === 'ron'}
-                  onChange={(e) => setAgariType(e.target.value as 'tsumo' | 'ron')}
-                />
-                ロン
-              </label>
-            </div>
-          </div>
-          <div className="option-group">
-            <div className="option-title">場風</div>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="bakaze"
-                  value="ton"
-                  checked={bakaze === 'ton'}
-                  onChange={(e) => setBakaze(e.target.value)}
-                />
-                東
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="bakaze"
-                  value="nan"
-                  checked={bakaze === 'nan'}
-                  onChange={(e) => setBakaze(e.target.value)}
-                />
-                南
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="bakaze"
-                  value="sha"
-                  checked={bakaze === 'sha'}
-                  onChange={(e) => setBakaze(e.target.value)}
-                />
-                西
-              </label>
-            </div>
-          </div>
-          <div className="option-group">
-            <div className="option-title">自風</div>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="jikaze"
-                  value="ton"
-                  checked={jikaze === 'ton'}
-                  onChange={(e) => setJikaze(e.target.value)}
-                />
-                東
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="jikaze"
-                  value="nan"
-                  checked={jikaze === 'nan'}
-                  onChange={(e) => setJikaze(e.target.value)}
-                />
-                南
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="jikaze"
-                  value="sha"
-                  checked={jikaze === 'sha'}
-                  onChange={(e) => setJikaze(e.target.value)}
-                />
-                西
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="jikaze"
-                  value="pei"
-                  checked={jikaze === 'pei'}
-                  onChange={(e) => setJikaze(e.target.value)}
-                />
-                北
-              </label>
-            </div>
-          </div>
-          <div className="option-group">
-            <div className="option-title">親番</div>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="oya"
-                  value="oya"
-                  checked={isDealer}
-                  onChange={() => setIsDealer(true)}
-                />
-                親（東家）
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="radio"
-                  name="oya"
-                  value="ko"
-                  checked={!isDealer}
-                  onChange={() => setIsDealer(false)}
-                />
-                子
-              </label>
-            </div>
-            <div className="info-text">※ 点数計算のみに利用されます。</div>
-          </div>
-          <div className="option-group">
-            <div className="option-title">その他</div>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={riichi}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setRiichi(checked);
-                    if (!checked) {
-                      setIppatsu(false);
-                      setIsDoubleRiichi(false);
-                    }
-                  }}
-                  disabled={!isMenzen}
-                />
-                リーチ
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isDoubleRiichi}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setIsDoubleRiichi(checked);
-                    if (checked) {
-                      setRiichi(true);
-                    }
-                  }}
-                  disabled={!isMenzen}
-                />
-                ダブルリーチ
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={ippatsu}
-                  onChange={(e) => setIppatsu(e.target.checked)}
-                  disabled={!riichi}
-                />
-                一発
-              </label>
-            </div>
-            <div className="info-text">門前は鳴き状態から自動判定されます。</div>
-          </div>
-          <div className="option-group">
-            <div className="option-title">特殊和了条件</div>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isHaitei}
-                  onChange={(e) => setIsHaitei(e.target.checked)}
-                  disabled={agariType !== 'tsumo'}
-                />
-                海底摸月
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isHoutei}
-                  onChange={(e) => setIsHoutei(e.target.checked)}
-                  disabled={agariType !== 'ron'}
-                />
-                河底撈魚
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isRinshan}
-                  onChange={(e) => setIsRinshan(e.target.checked)}
-                  disabled={agariType !== 'tsumo'}
-                />
-                嶺上開花
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isChankan}
-                  onChange={(e) => setIsChankan(e.target.checked)}
-                  disabled={agariType !== 'ron'}
-                />
-                槍槓
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isNagashiMangan}
-                  onChange={(e) => setIsNagashiMangan(e.target.checked)}
-                />
-                流し満貫
-              </label>
-            </div>
-          </div>
-          <div className="option-group">
-            <div className="option-title">役満（特殊条件）</div>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isTenhou}
-                  onChange={(e) => {
-                    setIsTenhou(e.target.checked);
-                    if (e.target.checked) {
-                      setIsChiihou(false);
-                      setJikaze('ton');
-                    }
-                  }}
-                  disabled={jikaze !== 'ton'}
-                />
-                天和（親の配牌時和了）
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isChiihou}
-                  onChange={(e) => {
-                    setIsChiihou(e.target.checked);
-                    if (e.target.checked) {
-                      setIsTenhou(false);
-                    }
-                  }}
-                  disabled={jikaze === 'ton'}
-                />
-                地和（子の第一ツモ和了）
-              </label>
-            </div>
-          </div>
-          <div className="option-group">
-            <div className="option-title">ドラ設定</div>
-            <div className="dora-block">
-              <div className="option-subtitle">表示ドラ</div>
-              <div className="hand-tiles">
-                {doraTiles.length === 0 && <div className="info-text">未設定</div>}
-                {doraTiles.map((tile, index) => (
-                  <div
-                    key={`${tile}-${index}`}
-                    className="hand-tile"
-                    onClick={() => removeDoraTileValue(index, 'dora')}
-                  >
-                    <TileFace tile={tile} />
-                  </div>
-                ))}
-              </div>
-              <div className="option-group" style={{ marginTop: '8px' }}>
-                <select value={doraSelect} onChange={(e) => setDoraSelect(e.target.value as Tile)}>
-                  {ALL_TILES.map(tile => (
-                    <option key={tile} value={tile}>
-                      {TILE_DISPLAY[tile]}
-                    </option>
+              <div className="tile-group">
+                <div className="tile-group-title">筒子（ピンズ）</div>
+                <div className="tiles">
+                  {TILES.pinzu.map(tile => (
+                    <div
+                      key={tile}
+                      className="tile"
+                      onClick={() => addTileToHand(tile)}
+                    >
+                      <TileFace tile={tile} />
+                    </div>
                   ))}
+                </div>
+              </div>
+              <div className="tile-group">
+                <div className="tile-group-title">索子（ソーズ）</div>
+                <div className="tiles">
+                  {TILES.souzu.map(tile => (
+                    <div
+                      key={tile}
+                      className="tile"
+                      onClick={() => addTileToHand(tile)}
+                    >
+                      <TileFace tile={tile} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="tile-group">
+                <div className="tile-group-title">字牌</div>
+                <div className="tiles">
+                  {TILES.jihai.map(tile => (
+                    <div
+                      key={tile}
+                      className="tile"
+                      onClick={() => addTileToHand(tile)}
+                    >
+                      <TileFace tile={tile} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 現在の手牌表示 */}
+          <div className="section compact">
+            <div className="section-title">現在の手牌</div>
+            <div className="hand-display">
+              <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - getMeldTileCount(melds) - 1}枚)</div>
+              <div className="hand-tiles">
+                {hand.map((tile, index) => (
+                  <div
+                    key={index}
+                    className="hand-tile"
+                    onClick={() => removeTileFromHand(index)}
+                  >
+                    <TileFace tile={tile} />
+                  </div>
+                ))}
+              </div>
+              <div className="info-text">※ 手牌は自動的にソートされます。</div>
+            </div>
+
+            {/* 鳴き表示 */}
+            <div className="hand-display" style={{ marginTop: '15px' }}>
+              <div className="hand-title">鳴き（副露） (<span>{melds.length}</span>回）</div>
+              <div className="melds-container">
+                {melds.map((meld, index) => (
+                  <div key={index} className="meld-group" onClick={() => removeMeld(index)}>
+                    <div className="meld-type">
+                      {meld.type === 'chii' && 'チー'}
+                      {meld.type === 'pon' && 'ポン'}
+                      {meld.type === 'minkan' && '明カン'}
+                      {meld.type === 'ankan' && '暗カン'}
+                    </div>
+                    <div className="meld-tiles">
+                      {meld.tiles.map((tile, tileIndex) => (
+                        <div key={tileIndex} className="hand-tile" style={{ fontSize: '14px' }}>
+                          <TileFace tile={tile} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="info-text">※ クリックして削除できます。</div>
+            </div>
+
+            {/* 鳴き入力 */}
+            <div className="hand-display" style={{ marginTop: '15px' }}>
+              <div className="hand-title">鳴きを追加</div>
+              <div className="option-group" style={{ marginBottom: '10px' }}>
+                <select
+                  value={meldType}
+                  onChange={(e) => setMeldType(e.target.value as MeldType)}
+                  style={{ padding: '5px', fontSize: '14px' }}
+                >
+                  <option value="chii">チー（順子）</option>
+                  <option value="pon">ポン（刻子）</option>
+                  <option value="minkan">明カン（槓子）</option>
+                  <option value="ankan">暗カン（槓子）</option>
                 </select>
-                <button className="btn" style={{ marginLeft: '8px' }} onClick={() => addDoraTileValue('dora')}>
-                  追加
+              </div>
+              <div className="tile-selector" style={{ fontSize: '12px', marginBottom: '10px' }}>
+                <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>牌を選択:</div>
+                <div className="tile-group">
+                  <div className="tiles">
+                    {[...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai].map(tile => (
+                      <div
+                        key={tile}
+                        className="tile tile--mini"
+                        onClick={() => addTileToMeld(tile)}
+                      >
+                        <TileFace tile={tile} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="hand-tiles">
+                {meldInput.map((tile, index) => (
+                  <div
+                    key={index}
+                    className="hand-tile"
+                    onClick={() => removeTileFromMeld(index)}
+                  >
+                    <TileFace tile={tile} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={addMeld}
+                  disabled={meldInput.length === 0}
+                >
+                  鳴きを確定
                 </button>
-              </div>
-            </div>
-            <div className="dora-block" style={{ marginTop: '10px' }}>
-              <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
-              <div className="hand-tiles">
-                {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
-                {uraDoraTiles.map((tile, index) => (
-                  <div
-                    key={`${tile}-ura-${index}`}
-                    className="hand-tile"
-                    onClick={() => removeDoraTileValue(index, 'ura')}
-                  >
-                    <TileFace tile={tile} />
-                  </div>
-                ))}
-              </div>
-              <div className="option-group" style={{ marginTop: '8px' }}>
-                <select value={uraDoraSelect} onChange={(e) => setUraDoraSelect(e.target.value as Tile)}>
-                  {ALL_TILES.map(tile => (
-                    <option key={tile} value={tile}>
-                      {TILE_DISPLAY[tile]}
-                    </option>
-                  ))}
-                </select>
                 <button
                   className="btn"
-                  style={{ marginLeft: '8px' }}
-                  onClick={() => addDoraTileValue('ura')}
-                  disabled={!riichi}
+                  onClick={() => setMeldInput([])}
+                  disabled={meldInput.length === 0}
                 >
-                  追加
+                  入力をクリア
                 </button>
               </div>
-              {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
-            </div>
-            <div className="dora-block" style={{ marginTop: '10px' }}>
-              <div className="option-subtitle">赤ドラ</div>
-              <div className="checkbox-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={akaDora.man}
-                    onChange={() => toggleAkaDora('man')}
-                  />
-                  赤5m
-                </label>
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={akaDora.pin}
-                    onChange={() => toggleAkaDora('pin')}
-                  />
-                  赤5p
-                </label>
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={akaDora.sou}
-                    onChange={() => toggleAkaDora('sou')}
-                  />
-                  赤5s
-                </label>
+              <div className="info-text" style={{ marginTop: '10px' }}>
+                ※ チー・ポンは3枚、カンは4枚選択してください。
               </div>
-              <div className="info-text">※ 対応する5の牌が手牌/鳴きに含まれている必要があります。</div>
+            </div>
+
+            <div className="hand-display" style={{ marginTop: '15px' }}>
+              <div className="hand-title">和了牌 (<span>{winningTile ? 1 : 0}</span>/1枚)</div>
+              <div className="hand-tiles">
+                {winningTile && (
+                  <div
+                    className="hand-tile winning-tile"
+                    onClick={removeWinningTile}
+                  >
+                    <TileFace tile={winningTile} />
+                  </div>
+                )}
+              </div>
+              <div className="info-text">※ 和了した牌を1枚選択してください。</div>
+            </div>
+            <div className="controls">
+              <button className="btn btn-danger" onClick={clearAll}>すべてクリア</button>
             </div>
           </div>
         </div>
-        <div className="hand-display" style={{ marginTop: '20px' }}>
-          <div className="hand-title">キーボード入力</div>
-          <div className="tile-input-card">
-            <input
-              type="text"
-              value={tileInput}
-              placeholder="例: 1m, 9p, ton, 中"
-              onChange={(e) => setTileInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  addTileFromInput();
-                }
-              }}
-            />
-            <div className="tile-input-actions">
-              <button className="btn btn-primary" onClick={addTileFromInput}>手牌に追加</button>
-              <button className="btn" onClick={setWinningTileFromInput}>和了牌に設定</button>
+
+        <div className="layout-right">
+          {/* オプション設定 */}
+          <div className="section compact">
+            <div className="section-title">和了条件</div>
+            <div className="options">
+              <div className="option-group">
+                <div className="option-title">和了方法</div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="agari-type"
+                      value="tsumo"
+                      checked={agariType === 'tsumo'}
+                      onChange={(e) => setAgariType(e.target.value as 'tsumo' | 'ron')}
+                    />
+                    ツモ
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="agari-type"
+                      value="ron"
+                      checked={agariType === 'ron'}
+                      onChange={(e) => setAgariType(e.target.value as 'tsumo' | 'ron')}
+                    />
+                    ロン
+                  </label>
+                </div>
+              </div>
+              <div className="option-group">
+                <div className="option-title">場風</div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="bakaze"
+                      value="ton"
+                      checked={bakaze === 'ton'}
+                      onChange={(e) => setBakaze(e.target.value)}
+                    />
+                    東
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="bakaze"
+                      value="nan"
+                      checked={bakaze === 'nan'}
+                      onChange={(e) => setBakaze(e.target.value)}
+                    />
+                    南
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="bakaze"
+                      value="sha"
+                      checked={bakaze === 'sha'}
+                      onChange={(e) => setBakaze(e.target.value)}
+                    />
+                    西
+                  </label>
+                </div>
+              </div>
+              <div className="option-group">
+                <div className="option-title">自風</div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="jikaze"
+                      value="ton"
+                      checked={jikaze === 'ton'}
+                      onChange={(e) => setJikaze(e.target.value)}
+                    />
+                    東
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="jikaze"
+                      value="nan"
+                      checked={jikaze === 'nan'}
+                      onChange={(e) => setJikaze(e.target.value)}
+                    />
+                    南
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="jikaze"
+                      value="sha"
+                      checked={jikaze === 'sha'}
+                      onChange={(e) => setJikaze(e.target.value)}
+                    />
+                    西
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="jikaze"
+                      value="pei"
+                      checked={jikaze === 'pei'}
+                      onChange={(e) => setJikaze(e.target.value)}
+                    />
+                    北
+                  </label>
+                </div>
+              </div>
+              <div className="option-group">
+                <div className="option-title">親番</div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="oya"
+                      value="oya"
+                      checked={isDealer}
+                      onChange={() => setIsDealer(true)}
+                    />
+                    親（東家）
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="radio"
+                      name="oya"
+                      value="ko"
+                      checked={!isDealer}
+                      onChange={() => setIsDealer(false)}
+                    />
+                    子
+                  </label>
+                </div>
+                <div className="info-text">※ 点数計算のみに利用されます。</div>
+              </div>
+              <div className="option-group">
+                <div className="option-title">その他</div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={riichi}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setRiichi(checked);
+                        if (!checked) {
+                          setIppatsu(false);
+                          setIsDoubleRiichi(false);
+                        }
+                      }}
+                      disabled={!isMenzen}
+                    />
+                    リーチ
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isDoubleRiichi}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsDoubleRiichi(checked);
+                        if (checked) {
+                          setRiichi(true);
+                        }
+                      }}
+                      disabled={!isMenzen}
+                    />
+                    ダブルリーチ
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={ippatsu}
+                      onChange={(e) => setIppatsu(e.target.checked)}
+                      disabled={!riichi}
+                    />
+                    一発
+                  </label>
+                </div>
+                <div className="info-text">門前は鳴き状態から自動判定されます。</div>
+              </div>
+              <div className="option-group">
+                <div className="option-title">特殊和了条件</div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isHaitei}
+                      onChange={(e) => setIsHaitei(e.target.checked)}
+                      disabled={agariType !== 'tsumo'}
+                    />
+                    海底摸月
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isHoutei}
+                      onChange={(e) => setIsHoutei(e.target.checked)}
+                      disabled={agariType !== 'ron'}
+                    />
+                    河底撈魚
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isRinshan}
+                      onChange={(e) => setIsRinshan(e.target.checked)}
+                      disabled={agariType !== 'tsumo'}
+                    />
+                    嶺上開花
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isChankan}
+                      onChange={(e) => setIsChankan(e.target.checked)}
+                      disabled={agariType !== 'ron'}
+                    />
+                    槍槓
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isNagashiMangan}
+                      onChange={(e) => setIsNagashiMangan(e.target.checked)}
+                    />
+                    流し満貫
+                  </label>
+                </div>
+              </div>
+              <div className="option-group">
+                <div className="option-title">役満（特殊条件）</div>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isTenhou}
+                      onChange={(e) => {
+                        setIsTenhou(e.target.checked);
+                        if (e.target.checked) {
+                          setIsChiihou(false);
+                          setJikaze('ton');
+                        }
+                      }}
+                      disabled={jikaze !== 'ton'}
+                    />
+                    天和（親の配牌時和了）
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isChiihou}
+                      onChange={(e) => {
+                        setIsChiihou(e.target.checked);
+                        if (e.target.checked) {
+                          setIsTenhou(false);
+                        }
+                      }}
+                      disabled={jikaze === 'ton'}
+                    />
+                    地和（子の第一ツモ和了）
+                  </label>
+                </div>
+              </div>
+              <div className="option-group">
+                <div className="option-title">ドラ設定</div>
+                <div className="dora-block">
+                  <div className="option-subtitle">表示ドラ</div>
+                  <div className="hand-tiles">
+                    {doraTiles.length === 0 && <div className="info-text">未設定</div>}
+                    {doraTiles.map((tile, index) => (
+                      <div
+                        key={`${tile}-${index}`}
+                        className="hand-tile"
+                        onClick={() => removeDoraTileValue(index, 'dora')}
+                      >
+                        <TileFace tile={tile} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="option-group" style={{ marginTop: '8px' }}>
+                    <select value={doraSelect} onChange={(e) => setDoraSelect(e.target.value as Tile)}>
+                      {ALL_TILES.map(tile => (
+                        <option key={tile} value={tile}>
+                          {TILE_DISPLAY[tile]}
+                        </option>
+                      ))}
+                    </select>
+                    <button className="btn" style={{ marginLeft: '8px' }} onClick={() => addDoraTileValue('dora')}>
+                      追加
+                    </button>
+                  </div>
+                </div>
+                <div className="dora-block" style={{ marginTop: '10px' }}>
+                  <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
+                  <div className="hand-tiles">
+                    {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
+                    {uraDoraTiles.map((tile, index) => (
+                      <div
+                        key={`${tile}-ura-${index}`}
+                        className="hand-tile"
+                        onClick={() => removeDoraTileValue(index, 'ura')}
+                      >
+                        <TileFace tile={tile} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="option-group" style={{ marginTop: '8px' }}>
+                    <select value={uraDoraSelect} onChange={(e) => setUraDoraSelect(e.target.value as Tile)}>
+                      {ALL_TILES.map(tile => (
+                        <option key={tile} value={tile}>
+                          {TILE_DISPLAY[tile]}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn"
+                      style={{ marginLeft: '8px' }}
+                      onClick={() => addDoraTileValue('ura')}
+                      disabled={!riichi}
+                    >
+                      追加
+                    </button>
+                  </div>
+                  {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
+                </div>
+                <div className="dora-block" style={{ marginTop: '10px' }}>
+                  <div className="option-subtitle">赤ドラ</div>
+                  <div className="checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={akaDora.man}
+                        onChange={() => toggleAkaDora('man')}
+                      />
+                      赤5m
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={akaDora.pin}
+                        onChange={() => toggleAkaDora('pin')}
+                      />
+                      赤5p
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={akaDora.sou}
+                        onChange={() => toggleAkaDora('sou')}
+                      />
+                      赤5s
+                    </label>
+                  </div>
+                  <div className="info-text">※ 対応する5の牌が手牌/鳴きに含まれている必要があります。</div>
+                </div>
+              </div>
             </div>
-            <div className="info-text">※ 牌コードを入力して Enter またはボタンで追加できます。</div>
+            <div className="hand-display" style={{ marginTop: '20px' }}>
+              <div className="hand-title">キーボード入力</div>
+              <div className="tile-input-card">
+                <input
+                  type="text"
+                  value={tileInput}
+                  placeholder="例: 1m, 9p, ton, 中"
+                  onChange={(e) => setTileInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      addTileFromInput();
+                    }
+                  }}
+                />
+                <div className="tile-input-actions">
+                  <button className="btn btn-primary" onClick={addTileFromInput}>手牌に追加</button>
+                  <button className="btn" onClick={setWinningTileFromInput}>和了牌に設定</button>
+                </div>
+                <div className="info-text">※ 牌コードを入力して Enter またはボタンで追加できます。</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 計算ボタン */}
+          <div className="section compact sticky-actions">
+            <button
+              className="btn btn-primary"
+              onClick={handleCalculate}
+              style={{ width: '100%', fontSize: '1.05em', padding: '12px' }}
+            >
+              点数を計算する
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 計算ボタン */}
-      <div className="section">
-        <button
-          className="btn btn-primary"
-          onClick={handleCalculate}
-          style={{ width: '100%', fontSize: '1.2em', padding: '15px' }}
-        >
-          点数を計算する
-        </button>
-      </div>
-
-      <div className="section">
+      <div className="section compact">
         <div className="section-title">計算履歴</div>
         {history.length === 0 ? (
           <div className="info-text">まだ履歴がありません。</div>
