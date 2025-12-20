@@ -1269,57 +1269,61 @@ type WaitPattern = 'ryanmen' | 'shanpon' | 'penchan' | 'kanchan' | 'tanki';
  * 待ち形を検出する
  */
 function detectWaitPattern(hand: Tile[], winningTile: Tile): WaitPattern {
-  const tileCounts: Record<string, number> = {};
-  hand.forEach(tile => {
-    tileCounts[tile] = (tileCounts[tile] || 0) + 1;
-  });
+  const patterns = getMentsuPatterns(hand);
+  let hasRyanmen = false;
+  let hasKanchan = false;
+  let hasPenchan = false;
+  let hasTanki = false;
+  let hasShanpon = false;
 
-  // 単騎待ち（雀頭になる待ち）
-  if (tileCounts[winningTile] === 2) {
-    return 'tanki';
-  }
-
-  // 双碰待ち（刻子になる待ち）
-  if (tileCounts[winningTile] === 3) {
-    return 'shanpon';
-  }
-
-  // 数牌の待ち形判定
-  const [num, suit] = parseTile(winningTile);
-  if (num && suit) {
-    const tile1 = `${num - 2}${suit}`;
-    const tile2 = `${num - 1}${suit}`;
-    const tile3 = `${num + 1}${suit}`;
-    const tile4 = `${num + 2}${suit}`;
-
-    // 辺張待ち
-    if (num === 3 && tileCounts[tile2] >= 1 && tileCounts[`${num - 2}${suit}`] >= 1) {
-      return 'penchan';
-    }
-    if (num === 7 && tileCounts[tile3] >= 1 && tileCounts[tile4] >= 1) {
-      return 'penchan';
+  patterns.forEach(pattern => {
+    if (pattern.jantou === winningTile) {
+      hasTanki = true;
+      return;
     }
 
-    // 嵌張待ち
-    if (num >= 2 && num <= 8) {
-      if (tileCounts[tile2] >= 1 && tileCounts[tile3] >= 1) {
-        // 中央の牌を引いた場合は嵌張の可能性
-        const hasSequence = (tileCounts[tile2] >= 1 && tileCounts[tile3] >= 1);
-        const hasRyanmen =
-          (num >= 3 && tileCounts[`${num - 2}${suit}`] >= 1 && tileCounts[tile2] >= 1) ||
-          (num <= 7 && tileCounts[tile3] >= 1 && tileCounts[`${num + 2}${suit}`] >= 1);
+    pattern.mentsu.forEach(mentsu => {
+      if (!mentsu.includes(winningTile)) return;
+      if (mentsu.length === 3 && mentsu.every(tile => tile === winningTile)) {
+        hasShanpon = true;
+        return;
+      }
+      if (!isShuntsu(mentsu)) return;
 
-        if (hasSequence && !hasRyanmen) {
-          return 'kanchan';
+      const sorted = sortHand(mentsu);
+      if (winningTile === sorted[1]) {
+        hasKanchan = true;
+        return;
+      }
+
+      const [firstNum] = parseTile(sorted[0]);
+      const [thirdNum] = parseTile(sorted[2]);
+      if (firstNum === null || thirdNum === null) return;
+
+      if (winningTile === sorted[0]) {
+        if (thirdNum === 9) {
+          hasPenchan = true;
+        } else {
+          hasRyanmen = true;
+        }
+        return;
+      }
+
+      if (winningTile === sorted[2]) {
+        if (firstNum === 1) {
+          hasPenchan = true;
+        } else {
+          hasRyanmen = true;
         }
       }
-    }
+    });
+  });
 
-    // 両面待ち（デフォルト）
-    return 'ryanmen';
-  }
-
-  // 字牌の場合はタンキかシャンポン
+  if (hasRyanmen) return 'ryanmen';
+  if (hasTanki) return 'tanki';
+  if (hasKanchan) return 'kanchan';
+  if (hasPenchan) return 'penchan';
+  if (hasShanpon) return 'shanpon';
   return 'tanki';
 }
 
