@@ -106,24 +106,26 @@ export default function ScoreQuizPage() {
     return `子: ${expected.ko}点 / 親: ${expected.oya}点`;
   }, [expected]);
 
-  const handleJudge = () => {
-    if (!expected) return;
+  const isInputCorrect = () => {
+    if (!expected) return false;
     if (expected.type === 'ron') {
       const input = Number(answer.ron);
-      const ok = !Number.isNaN(input) && input === expected.ron;
-      setJudgeResult({ ok, expectedText });
-      return;
+      return !Number.isNaN(input) && input === expected.ron;
     }
     if (expected.type === 'tsumo-oya') {
       const input = Number(answer.tsumoAll);
-      const ok = !Number.isNaN(input) && input === expected.perPerson;
-      setJudgeResult({ ok, expectedText });
-      return;
+      return !Number.isNaN(input) && input === expected.perPerson;
     }
     const inputKo = Number(answer.tsumoKo);
     const inputOya = Number(answer.tsumoOya);
-    const ok = !Number.isNaN(inputKo) && !Number.isNaN(inputOya)
+    return !Number.isNaN(inputKo) && !Number.isNaN(inputOya)
       && inputKo === expected.ko && inputOya === expected.oya;
+  };
+
+  const handleJudge = (choice: 'ok' | 'ng') => {
+    if (!expected) return;
+    const inputOk = isInputCorrect();
+    const ok = choice === 'ok' ? inputOk : !inputOk;
     setJudgeResult({ ok, expectedText });
   };
 
@@ -226,7 +228,8 @@ export default function ScoreQuizPage() {
         <div className="section-title">解答入力</div>
         {renderInput()}
         <div className="controls" style={{ marginTop: '12px' }}>
-          <button className="btn btn-primary" onClick={handleJudge}>判定</button>
+          <button className="btn btn-primary" onClick={() => handleJudge('ok')}>○ 正しい</button>
+          <button className="btn btn-danger" onClick={() => handleJudge('ng')}>× 間違い</button>
           <button className="btn btn-secondary" onClick={handleNext}>次の問題</button>
         </div>
         {judgeResult && (
