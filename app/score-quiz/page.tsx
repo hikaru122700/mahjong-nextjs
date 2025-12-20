@@ -128,7 +128,7 @@ const buildSequence = (suit: typeof SUITS[number], start: number): Tile[] => [
 
 const buildTriplet = (tile: Tile): Tile[] => [tile, tile, tile];
 
-const pickRandomSequence = (startPool = SEQUENCE_STARTS): Tile[] => {
+const pickRandomSequence = (startPool: readonly number[] = SEQUENCE_STARTS): Tile[] => {
   const suit = pickOne(SUITS);
   const start = pickOne(startPool);
   return buildSequence(suit, start);
