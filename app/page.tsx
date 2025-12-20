@@ -13,8 +13,6 @@ import {
   type CalculationResult
 } from '@/lib/mahjong';
 import TileFace from './components/TileFace';
-
-const ALL_TILES: Tile[] = [...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai];
 const HONOR_INPUT_MAP: Record<string, Tile> = {
   ton: '東',
   nan: '南',
@@ -23,6 +21,22 @@ const HONOR_INPUT_MAP: Record<string, Tile> = {
   haku: '白',
   hatsu: '發',
   chun: '中'
+};
+
+const SUIT_TABS = [
+  { key: 'manzu', label: '萬子' },
+  { key: 'pinzu', label: '筒子' },
+  { key: 'souzu', label: '索子' },
+  { key: 'jihai', label: '字牌' }
+] as const;
+
+type SuitKey = (typeof SUIT_TABS)[number]['key'];
+
+const SUIT_TILE_MAP: Record<SuitKey, Tile[]> = {
+  manzu: TILES.manzu,
+  pinzu: TILES.pinzu,
+  souzu: TILES.souzu,
+  jihai: TILES.jihai
 };
 
 interface HistoryEntry {
@@ -102,8 +116,8 @@ export default function Home() {
   const [isNagashiMangan, setIsNagashiMangan] = useState<boolean>(false);
   const [doraTiles, setDoraTiles] = useState<Tile[]>([]);
   const [uraDoraTiles, setUraDoraTiles] = useState<Tile[]>([]);
-  const [doraSelect, setDoraSelect] = useState<Tile>(ALL_TILES[0]);
-  const [uraDoraSelect, setUraDoraSelect] = useState<Tile>(ALL_TILES[0]);
+  const [doraIndicatorSuit, setDoraIndicatorSuit] = useState<SuitKey>('manzu');
+  const [uraIndicatorSuit, setUraIndicatorSuit] = useState<SuitKey>('manzu');
   const [akaDora, setAkaDora] = useState<{ man: boolean; pin: boolean; sou: boolean }>({
     man: false,
     pin: false,
@@ -133,10 +147,9 @@ export default function Home() {
     return false;
   };
 
-  const addDoraTileValue = (type: 'dora' | 'ura') => {
+  const addDoraTileValue = (type: 'dora' | 'ura', tile: Tile) => {
     const target = type === 'dora' ? doraTiles : uraDoraTiles;
     const setter = type === 'dora' ? setDoraTiles : setUraDoraTiles;
-    const selectedTile = type === 'dora' ? doraSelect : uraDoraSelect;
 
     if (type === 'ura' && !riichi) {
       setError('裏ドラはリーチ時のみ設定できます');
@@ -148,7 +161,7 @@ export default function Home() {
       return;
     }
 
-    setter([...target, selectedTile]);
+    setter([...target, tile]);
     setError('');
   };
 
@@ -388,8 +401,19 @@ export default function Home() {
     setDoraTiles([]);
     setUraDoraTiles([]);
     setAkaDora({ man: false, pin: false, sou: false });
-    setDoraSelect(ALL_TILES[0]);
-    setUraDoraSelect(ALL_TILES[0]);
+  };
+
+  const getDoraFromIndicator = (tile: Tile): Tile => {
+    if (tile.length === 2) {
+      const num = parseInt(tile[0], 10);
+      const suit = tile[1];
+      const next = num === 9 ? 1 : num + 1;
+      return `${next}${suit}` as Tile;
+    }
+    const honorOrder: Tile[] = ['東', '南', '西', '北', '白', '發', '中'];
+    const index = honorOrder.indexOf(tile);
+    if (index === -1) return tile;
+    return honorOrder[(index + 1) % honorOrder.length];
   };
 
   const handleCalculate = () => {
@@ -424,7 +448,13 @@ export default function Home() {
       }
     };
 
-    const calcResult = calculateScore(hand, winningTile, options);
+    const calcOptions: AgariOptions = {
+      ...options,
+      doraTiles: doraTiles.map(getDoraFromIndicator),
+      uraDoraTiles: riichi ? uraDoraTiles.map(getDoraFromIndicator) : []
+    };
+
+    const calcResult = calculateScore(hand, winningTile, calcOptions);
 
     if ('error' in calcResult) {
       setError(calcResult.error);
@@ -903,62 +933,84 @@ export default function Home() {
                   <div className="option-subtitle">表示ドラ</div>
                   <div className="hand-tiles">
                     {doraTiles.length === 0 && <div className="info-text">未設定</div>}
-                    {doraTiles.map((tile, index) => (
-                      <div
-                        key={`${tile}-${index}`}
-                        className="hand-tile"
-                        onClick={() => removeDoraTileValue(index, 'dora')}
-                      >
-                        <TileFace tile={tile} />
-                      </div>
-                    ))}
+                {doraTiles.map((tile, index) => (
+                  <div
+                    key={`${tile}-${index}`}
+                    className="hand-tile"
+                    onClick={() => removeDoraTileValue(index, 'dora')}
+                  >
+                    <TileFace tile={tile} />
                   </div>
-                  <div className="option-group" style={{ marginTop: '8px' }}>
-                    <select value={doraSelect} onChange={(e) => setDoraSelect(e.target.value as Tile)}>
-                      {ALL_TILES.map(tile => (
-                        <option key={tile} value={tile}>
-                          {TILE_DISPLAY[tile]}
-                        </option>
-                      ))}
-                    </select>
-                    <button className="btn" style={{ marginLeft: '8px' }} onClick={() => addDoraTileValue('dora')}>
-                      追加
-                    </button>
-                  </div>
-                </div>
-                <div className="dora-block" style={{ marginTop: '10px' }}>
-                  <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
-                  <div className="hand-tiles">
-                    {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
-                    {uraDoraTiles.map((tile, index) => (
-                      <div
-                        key={`${tile}-ura-${index}`}
-                        className="hand-tile"
-                        onClick={() => removeDoraTileValue(index, 'ura')}
-                      >
-                        <TileFace tile={tile} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="option-group" style={{ marginTop: '8px' }}>
-                    <select value={uraDoraSelect} onChange={(e) => setUraDoraSelect(e.target.value as Tile)}>
-                      {ALL_TILES.map(tile => (
-                        <option key={tile} value={tile}>
-                          {TILE_DISPLAY[tile]}
-                        </option>
-                      ))}
-                    </select>
+                ))}
+              </div>
+              <div className="dora-picker">
+                <div className="tile-tabs">
+                  {SUIT_TABS.map(tab => (
                     <button
-                      className="btn"
-                      style={{ marginLeft: '8px' }}
-                      onClick={() => addDoraTileValue('ura')}
+                      key={tab.key}
+                      type="button"
+                      className={`tile-tab${doraIndicatorSuit === tab.key ? ' is-active' : ''}`}
+                      onClick={() => setDoraIndicatorSuit(tab.key)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="tiles">
+                  {SUIT_TILE_MAP[doraIndicatorSuit].map(tile => (
+                    <div
+                      key={tile}
+                      className="tile tile--mini"
+                      onClick={() => addDoraTileValue('dora', tile)}
+                    >
+                      <TileFace tile={tile} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="dora-block" style={{ marginTop: '10px' }}>
+              <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
+              <div className="hand-tiles">
+                    {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
+                {uraDoraTiles.map((tile, index) => (
+                  <div
+                    key={`${tile}-ura-${index}`}
+                    className="hand-tile"
+                    onClick={() => removeDoraTileValue(index, 'ura')}
+                  >
+                    <TileFace tile={tile} />
+                  </div>
+                ))}
+              </div>
+              <div className="dora-picker">
+                <div className="tile-tabs">
+                  {SUIT_TABS.map(tab => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      className={`tile-tab${uraIndicatorSuit === tab.key ? ' is-active' : ''}`}
+                      onClick={() => setUraIndicatorSuit(tab.key)}
                       disabled={!riichi}
                     >
-                      追加
+                      {tab.label}
                     </button>
-                  </div>
-                  {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
+                  ))}
                 </div>
+                <div className="tiles">
+                  {SUIT_TILE_MAP[uraIndicatorSuit].map(tile => (
+                    <div
+                      key={tile}
+                      className={`tile tile--mini${!riichi ? ' is-disabled' : ''}`}
+                      onClick={() => addDoraTileValue('ura', tile)}
+                    >
+                      <TileFace tile={tile} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
+            </div>
                 <div className="dora-block" style={{ marginTop: '10px' }}>
                   <div className="option-subtitle">赤ドラ</div>
                   <div className="checkbox-group">

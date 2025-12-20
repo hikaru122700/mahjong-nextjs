@@ -143,6 +143,40 @@ h1 {
   height: clamp(40px, 8vw, 54px);
 }
 
+.tile.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.tile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tile-tab {
+  border: 1px solid #d6dbe3;
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tile-tab.is-active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.tile-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .tile.selected {
   background: #667eea;
   color: white;
