@@ -39,6 +39,14 @@ const SUIT_TILE_MAP: Record<SuitKey, Tile[]> = {
   jihai: TILES.jihai
 };
 
+const RED_TILES = [
+  { tile: '5m', suit: 'man', label: '赤5m' },
+  { tile: '5p', suit: 'pin', label: '赤5p' },
+  { tile: '5s', suit: 'sou', label: '赤5s' }
+] as const;
+
+type RedSuit = (typeof RED_TILES)[number]['suit'];
+
 interface HistoryEntry {
   id: string;
   timestamp: number;
@@ -309,33 +317,83 @@ export default function Home() {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   }, [history]);
 
-  const addTileToHand = (tile: Tile) => {
+  useEffect(() => {
+    const tiles = getAllSelectedTiles();
+    const has5m = tiles.includes('5m');
+    const has5p = tiles.includes('5p');
+    const has5s = tiles.includes('5s');
+
+    setAkaDora(prev => {
+      const next = { ...prev };
+      let changed = false;
+      if (!has5m && prev.man) {
+        next.man = false;
+        changed = true;
+      }
+      if (!has5p && prev.pin) {
+        next.pin = false;
+        changed = true;
+      }
+      if (!has5s && prev.sou) {
+        next.sou = false;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [hand, melds, meldInput, winningTile]);
+
+  const addTileToHand = (tile: Tile): boolean => {
     const meldTileCount = getMeldTileCount(melds);
     const maxHandSize = 14 - meldTileCount - 1;
 
     if (hand.length >= maxHandSize) {
       if (exceedsTileLimit(tile, { includeWinningTile: false })) {
-        return;
+        return false;
       }
       setWinningTile(tile);
       setError('');
-      return;
+      return true;
     }
     if (exceedsTileLimit(tile)) {
-      return;
+      return false;
     }
     setHand(sortHand([...hand, tile]));
     setError('');
+    return true;
   };
 
-  const addTileToMeld = (tile: Tile) => {
+  const addTileToMeld = (tile: Tile): boolean => {
     const requiredTiles = meldType === 'ankan' || meldType === 'minkan' ? 4 : 3;
     if (meldInput.length < requiredTiles) {
       if (exceedsTileLimit(tile)) {
-        return;
+        return false;
       }
       setMeldInput([...meldInput, tile]);
       setError('');
+      return true;
+    }
+    return false;
+  };
+
+  const addRedTileToHand = (tile: Tile, suit: RedSuit) => {
+    if (akaDora[suit]) {
+      setError(`${TILE_DISPLAY[tile]}は1枚まで選択できます`);
+      return;
+    }
+    const added = addTileToHand(tile);
+    if (added) {
+      setAkaDora(prev => ({ ...prev, [suit]: true }));
+    }
+  };
+
+  const addRedTileToMeld = (tile: Tile, suit: RedSuit) => {
+    if (akaDora[suit]) {
+      setError(`${TILE_DISPLAY[tile]}は1枚まで選択できます`);
+      return;
+    }
+    const added = addTileToMeld(tile);
+    if (added) {
+      setAkaDora(prev => ({ ...prev, [suit]: true }));
     }
   };
 
@@ -488,6 +546,17 @@ export default function Home() {
                       <TileFace tile={tile} />
                     </div>
                   ))}
+                  {RED_TILES.filter(tile => tile.suit === 'man').map(tile => (
+                    <div
+                      key={tile.label}
+                      className="tile tile--red"
+                      onClick={() => addRedTileToHand(tile.tile, tile.suit)}
+                      title={tile.label}
+                    >
+                      <TileFace tile={tile.tile} />
+                      <span className="tile-badge">赤</span>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="tile-group">
@@ -502,6 +571,17 @@ export default function Home() {
                       <TileFace tile={tile} />
                     </div>
                   ))}
+                  {RED_TILES.filter(tile => tile.suit === 'pin').map(tile => (
+                    <div
+                      key={tile.label}
+                      className="tile tile--red"
+                      onClick={() => addRedTileToHand(tile.tile, tile.suit)}
+                      title={tile.label}
+                    >
+                      <TileFace tile={tile.tile} />
+                      <span className="tile-badge">赤</span>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="tile-group">
@@ -514,6 +594,17 @@ export default function Home() {
                       onClick={() => addTileToHand(tile)}
                     >
                       <TileFace tile={tile} />
+                    </div>
+                  ))}
+                  {RED_TILES.filter(tile => tile.suit === 'sou').map(tile => (
+                    <div
+                      key={tile.label}
+                      className="tile tile--red"
+                      onClick={() => addRedTileToHand(tile.tile, tile.suit)}
+                      title={tile.label}
+                    >
+                      <TileFace tile={tile.tile} />
+                      <span className="tile-badge">赤</span>
                     </div>
                   ))}
                 </div>
@@ -605,6 +696,17 @@ export default function Home() {
                         onClick={() => addTileToMeld(tile)}
                       >
                         <TileFace tile={tile} />
+                      </div>
+                    ))}
+                    {RED_TILES.map(tile => (
+                      <div
+                        key={tile.label}
+                        className="tile tile--mini tile--red"
+                        onClick={() => addRedTileToMeld(tile.tile, tile.suit)}
+                        title={tile.label}
+                      >
+                        <TileFace tile={tile.tile} />
+                        <span className="tile-badge">赤</span>
                       </div>
                     ))}
                   </div>
