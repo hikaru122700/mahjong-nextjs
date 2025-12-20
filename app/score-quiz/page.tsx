@@ -88,7 +88,7 @@ export default function ScoreQuizPage() {
     tsumoTotal: '',
     tsumoAll: ''
   });
-  const [judgeResult, setJudgeResult] = useState<{ ok: boolean; expectedText: string } | null>(null);
+  const [judgeResult, setJudgeResult] = useState<{ ok: boolean; expectedText: string; choice: 'ok' | 'ng' } | null>(null);
 
   const question = QUESTIONS[questionIndex % QUESTIONS.length];
   const calcResult = useMemo(
@@ -124,7 +124,7 @@ export default function ScoreQuizPage() {
     if (!expected) return;
     const inputOk = isInputCorrect();
     const ok = choice === 'ok' ? inputOk : !inputOk;
-    setJudgeResult({ ok, expectedText });
+    setJudgeResult({ ok, expectedText, choice });
   };
 
   const handleNext = () => {
@@ -231,6 +231,9 @@ export default function ScoreQuizPage() {
         {judgeResult && (
           <div className="info-text" style={{ marginTop: '10px' }}>
             {judgeResult.ok ? '○ 正解！' : `× 不正解（正解: ${judgeResult.expectedText}）`}
+            {judgeResult.ok && judgeResult.choice === 'ng' && (
+              <div style={{ marginTop: '6px' }}>本当の点数は {judgeResult.expectedText} でした。</div>
+            )}
           </div>
         )}
         {'error' in calcResult && (
