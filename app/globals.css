@@ -84,10 +84,39 @@ h1 {
   user-select: none;
 }
 
+.tile-image,
+.tile-text {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.tile-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-image {
+  filter: saturate(1.25) contrast(1.1);
+  transition: transform 0.2s, filter 0.2s;
+}
+
 .tile:hover {
   border-color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tile:hover .tile-image,
+.hand-tile:hover .tile-image {
+  filter: saturate(1.35) contrast(1.15);
+  transform: scale(1.02);
+}
+
+.tile--mini {
+  width: clamp(28px, 6vw, 38px);
+  height: clamp(40px, 8vw, 54px);
 }
 
 .tile.selected {
@@ -359,6 +388,40 @@ h1 {
 .history-yaku {
   font-size: 0.9em;
   color: #666;
+}
+
+.history-hand {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.history-label {
+  font-weight: 600;
+  color: #555;
+}
+
+.history-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.history-tile {
+  width: 28px;
+  height: 38px;
+  border: 1px solid #d7d7d7;
+  border-radius: 4px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-tile-winning {
+  border-color: #ffaa00;
+  box-shadow: 0 0 0 2px rgba(255, 170, 0, 0.15);
 }
 
 @media (max-width: 600px) {
