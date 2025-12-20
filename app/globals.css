@@ -552,6 +552,10 @@ h1 {
   font-size: 1em;
 }
 
+.tile-input-card input.input-error {
+  border-color: #dc3545;
+}
+
 .tile-input-actions {
   display: flex;
   gap: 10px;

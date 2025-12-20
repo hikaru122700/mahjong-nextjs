@@ -232,7 +232,7 @@ export default function Home() {
   const addTileFromInput = () => {
     const normalized = normalizeTileCode(tileInput);
     if (!normalized) {
-      setError('牌コードを正しく入力してください');
+      setError('牌コードを正しく入力してください（例: 1m, 9p, 1s, ton, 中）');
       return;
     }
     addTileToHand(normalized);
@@ -242,7 +242,7 @@ export default function Home() {
   const setWinningTileFromInput = () => {
     const normalized = normalizeTileCode(tileInput);
     if (!normalized) {
-      setError('牌コードを正しく入力してください');
+      setError('牌コードを正しく入力してください（例: 1m, 9p, 1s, ton, 中）');
       return;
     }
     setWinningTileHandler(normalized);
@@ -1331,19 +1331,22 @@ export default function Home() {
                 <input
                   type="text"
                   value={tileInput}
-                  placeholder="例: 1m, 9p, ton, 中"
+                  placeholder="例: 1m, 9p, 1s, ton, 中"
                   onChange={(e) => setTileInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       addTileFromInput();
                     }
                   }}
+                  aria-invalid={Boolean(error && error.includes('牌コード'))}
+                  className={error.includes('牌コード') ? 'input-error' : ''}
                 />
                 <div className="tile-input-actions">
                   <button className="btn btn-primary" onClick={addTileFromInput}>手牌に追加</button>
                   <button className="btn" onClick={setWinningTileFromInput}>和了牌に設定</button>
                 </div>
-                <div className="info-text">※ 牌コードを入力して Enter またはボタンで追加できます。</div>
+                <div className="info-text">※ 入力例: 1m, 9p, 1s, ton, nan, sha, pei, haku, hatsu, chun, 東, 中</div>
+                <div className="info-text">※ Enter またはボタンで追加できます。</div>
               </div>
             </div>
           </div>
