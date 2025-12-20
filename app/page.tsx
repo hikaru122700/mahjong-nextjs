@@ -150,6 +150,12 @@ export default function Home() {
   const getTileCount = (tile: Tile, options?: { includeWinningTile?: boolean }) =>
     getAllSelectedTiles(options).filter(t => t === tile).length;
 
+  const isRedTile = (tile: Tile) => (
+    (tile === '5m' && akaDora.man) ||
+    (tile === '5p' && akaDora.pin) ||
+    (tile === '5s' && akaDora.sou)
+  );
+
   const exceedsTileLimit = (tile: Tile, options?: { includeWinningTile?: boolean }) => {
     const count = getAllSelectedTiles(options).filter(t => t === tile).length;
     if (count >= 4) {
@@ -667,7 +673,7 @@ export default function Home() {
                   {hand.map((tile, index) => (
                     <div
                       key={index}
-                      className="hand-tile"
+                      className={`hand-tile${isRedTile(tile) ? ' hand-tile--red' : ''}`}
                       onClick={() => removeTileFromHand(index)}
                     >
                       <TileFace tile={tile} />
@@ -681,7 +687,7 @@ export default function Home() {
                 <div className="hand-tiles">
                   {winningTile ? (
                     <div
-                      className="hand-tile winning-tile"
+                      className={`hand-tile winning-tile${isRedTile(winningTile) ? ' hand-tile--red' : ''}`}
                       onClick={removeWinningTile}
                     >
                       <TileFace tile={winningTile} />
@@ -705,7 +711,11 @@ export default function Home() {
                       </div>
                       <div className="meld-tiles">
                         {meld.tiles.map((tile, tileIndex) => (
-                          <div key={tileIndex} className="hand-tile" style={{ fontSize: '14px' }}>
+                          <div
+                            key={tileIndex}
+                            className={`hand-tile${isRedTile(tile) ? ' hand-tile--red' : ''}`}
+                            style={{ fontSize: '14px' }}
+                          >
                             <TileFace tile={tile} />
                           </div>
                         ))}
@@ -1256,13 +1266,16 @@ export default function Home() {
                 <span className="history-label">手牌</span>
                 <div className="history-tiles">
                   {hand.map((tile, index) => (
-                    <span key={`${tile}-${index}`} className="history-tile">
+                    <span
+                      key={`${tile}-${index}`}
+                      className={`history-tile${isRedTile(tile) ? ' history-tile--red' : ''}`}
+                    >
                       <TileFace tile={tile} />
                     </span>
                   ))}
                 </div>
                 <span className="history-label">和了牌</span>
-                <span className="history-tile history-tile-winning">
+                <span className={`history-tile history-tile-winning${winningTile && isRedTile(winningTile) ? ' history-tile--red' : ''}`}>
                   {winningTile ? <TileFace tile={winningTile} /> : '未選択'}
                 </span>
               </div>
