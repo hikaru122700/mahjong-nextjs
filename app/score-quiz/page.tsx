@@ -622,6 +622,9 @@ export default function ScoreQuizPage() {
             <div>{judgeResult.ok ? '○ 正解！' : '× 不正解'}</div>
             <div>あなたの回答: {judgeResult.choice === 'ok' ? '○' : '×'}</div>
             <div>候補は{judgeResult.isCorrect ? '正しい' : '誤り'}でした。</div>
+            {judgeResult.ok && judgeResult.choice === 'ng' && (
+              <div>正解: {judgeResult.expectedText}</div>
+            )}
             {!judgeResult.ok && <div>正解: {judgeResult.expectedText}</div>}
           </div>
         )}
