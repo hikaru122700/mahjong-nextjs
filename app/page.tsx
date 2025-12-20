@@ -112,11 +112,6 @@ export default function Home() {
   const [uraDoraTiles, setUraDoraTiles] = useState<Tile[]>([]);
   const [kyotakuCount, setKyotakuCount] = useState<number>(0);
   const [honbaCount, setHonbaCount] = useState<number>(0);
-  const [akaDora, setAkaDora] = useState<{ man: boolean; pin: boolean; sou: boolean }>({
-    man: false,
-    pin: false,
-    sou: false
-  });
   const [tileSelectMode, setTileSelectMode] = useState<'hand' | 'meld' | 'dora' | 'ura'>('hand');
   const [redHandFlags, setRedHandFlags] = useState<boolean[]>([]);
   const [redMeldInputFlags, setRedMeldInputFlags] = useState<boolean[]>([]);
@@ -206,20 +201,6 @@ export default function Home() {
     setter(updated);
   };
 
-  const toggleAkaDora = (type: 'man' | 'pin' | 'sou') => {
-    const nextValue = !akaDora[type];
-    if (nextValue) {
-      const targetTile: Tile = type === 'man' ? '5m' : type === 'pin' ? '5p' : '5s';
-      const available = getAllSelectedTiles().filter(t => t === targetTile).length;
-      if (available === 0) {
-        setError(`${TILE_DISPLAY[targetTile]}を手牌または鳴きに含めてください`);
-        return;
-      }
-    }
-    setAkaDora(prev => ({ ...prev, [type]: nextValue }));
-    setError('');
-  };
-
   const addTileFromInput = () => {
     const normalized = normalizeTileCode(tileInput);
     if (!normalized) {
@@ -282,7 +263,6 @@ export default function Home() {
       pin: Boolean(entry.options.redDora?.pin),
       sou: Boolean(entry.options.redDora?.sou)
     };
-    setAkaDora(nextAkaDora);
     setKyotakuCount(Math.max(0, Math.floor(entry.options.kyotaku ?? 0)));
     setHonbaCount(Math.max(0, Math.floor(entry.options.honba ?? 0)));
 
@@ -448,7 +428,6 @@ export default function Home() {
       setWinningTile(tile);
       setRedWinningFlag(true);
       setError('');
-      setAkaDora(prev => ({ ...prev, [suit]: true }));
       return;
     }
     if (exceedsTileLimit(tile)) {
@@ -458,7 +437,6 @@ export default function Home() {
     setHand(sorted.tiles);
     setRedHandFlags(sorted.flags);
     setError('');
-    setAkaDora(prev => ({ ...prev, [suit]: true }));
   };
 
   const addRedTileToMeld = (tile: Tile, suit: RedSuit) => {
@@ -474,7 +452,6 @@ export default function Home() {
       setMeldInput([...meldInput, tile]);
       setRedMeldInputFlags([...redMeldInputFlags, true]);
       setError('');
-      setAkaDora(prev => ({ ...prev, [suit]: true }));
     }
   };
 
@@ -584,7 +561,6 @@ export default function Home() {
     setIsNagashiMangan(false);
     setDoraTiles([]);
     setUraDoraTiles([]);
-    setAkaDora({ man: false, pin: false, sou: false });
     setRedHandFlags([]);
     setRedMeldInputFlags([]);
     setRedMeldFlags([]);
@@ -610,6 +586,12 @@ export default function Home() {
       return;
     }
 
+    const redDoraCounts = {
+      man: hasRedSelection('man') ? 1 : 0,
+      pin: hasRedSelection('pin') ? 1 : 0,
+      sou: hasRedSelection('sou') ? 1 : 0
+    };
+
     const options: AgariOptions = {
       isTsumo: agariType === 'tsumo',
       bakaze,
@@ -629,11 +611,7 @@ export default function Home() {
       isNagashiMangan,
       doraTiles,
       uraDoraTiles: riichi ? uraDoraTiles : [],
-      redDora: {
-        man: akaDora.man ? 1 : 0,
-        pin: akaDora.pin ? 1 : 0,
-        sou: akaDora.sou ? 1 : 0
-      },
+      redDora: redDoraCounts,
       kyotaku: kyotakuCount,
       honba: honbaCount
     };
@@ -1290,36 +1268,6 @@ export default function Home() {
               <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
               {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
             </div>
-                <div className="dora-block" style={{ marginTop: '10px' }}>
-                  <div className="option-subtitle">赤ドラ</div>
-                  <div className="checkbox-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={akaDora.man}
-                        onChange={() => toggleAkaDora('man')}
-                      />
-                      赤5m
-                    </label>
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={akaDora.pin}
-                        onChange={() => toggleAkaDora('pin')}
-                      />
-                      赤5p
-                    </label>
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={akaDora.sou}
-                        onChange={() => toggleAkaDora('sou')}
-                      />
-                      赤5s
-                    </label>
-                  </div>
-                  <div className="info-text">※ 対応する5の牌が手牌/鳴きに含まれている必要があります。</div>
-                </div>
               </div>
             </div>
             <div className="hand-display" style={{ marginTop: '20px' }}>
