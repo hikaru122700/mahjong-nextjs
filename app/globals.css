@@ -41,6 +41,18 @@ h1 {
   font-weight: bold;
 }
 
+.section-title-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.section-title-button:hover {
+  text-decoration: underline;
+}
+
 .section.compact {
   margin-bottom: 16px;
   padding: 14px;
@@ -538,4 +550,18 @@ h1 {
   .history-item {
     flex-direction: column;
   }
+}
+.info-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.info-panel .result-box {
+  margin-top: 0;
+}
+
+.info-panel .yaku-list {
+  margin-top: 12px;
 }
