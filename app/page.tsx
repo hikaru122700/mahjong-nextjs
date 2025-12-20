@@ -127,7 +127,6 @@ export default function Home() {
   const [redMeldInputFlags, setRedMeldInputFlags] = useState<boolean[]>([]);
   const [redMeldFlags, setRedMeldFlags] = useState<boolean[][]>([]);
   const [redWinningFlag, setRedWinningFlag] = useState<boolean>(false);
-  const [tileInput, setTileInput] = useState<string>('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
   const [activeHistoryTab, setActiveHistoryTab] = useState<'hand' | 'options' | 'result'>('hand');
@@ -235,25 +234,6 @@ export default function Home() {
     setter(updated);
   };
 
-  const addTileFromInput = () => {
-    const normalized = normalizeTileCode(tileInput);
-    if (!normalized) {
-      setError('牌コードを正しく入力してください（例: 1m, 9p, 1s, ton, 中）');
-      return;
-    }
-    addTileToHand(normalized);
-    setTileInput('');
-  };
-
-  const setWinningTileFromInput = () => {
-    const normalized = normalizeTileCode(tileInput);
-    if (!normalized) {
-      setError('牌コードを正しく入力してください（例: 1m, 9p, 1s, ton, 中）');
-      return;
-    }
-    setWinningTileHandler(normalized);
-    setTileInput('');
-  };
 
   const pushHistoryEntry = (calcResult: CalculationResult, optionsSnapshot: AgariOptions) => {
     if (!winningTile) return;
@@ -1329,30 +1309,6 @@ export default function Home() {
               <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
               {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
             </div>
-              </div>
-            </div>
-            <div className="hand-display" style={{ marginTop: '20px' }}>
-              <div className="hand-title">キーボード入力</div>
-              <div className="tile-input-card">
-                <input
-                  type="text"
-                  value={tileInput}
-                  placeholder="例: 1m, 9p, 1s, ton, 中"
-                  onChange={(e) => setTileInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      addTileFromInput();
-                    }
-                  }}
-                  aria-invalid={Boolean(error && error.includes('牌コード'))}
-                  className={error.includes('牌コード') ? 'input-error' : ''}
-                />
-                <div className="tile-input-actions">
-                  <button className="btn btn-primary" onClick={addTileFromInput}>手牌に追加</button>
-                  <button className="btn" onClick={setWinningTileFromInput}>和了牌に設定</button>
-                </div>
-                <div className="info-text">※ 入力例: 1m, 9p, 1s, ton, nan, sha, pei, haku, hatsu, chun, 東, 中</div>
-                <div className="info-text">※ Enter またはボタンで追加できます。</div>
               </div>
             </div>
           </div>
