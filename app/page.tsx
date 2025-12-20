@@ -13,6 +13,7 @@ import {
   type CalculationResult
 } from '@/lib/mahjong';
 import TileFace from './components/TileFace';
+import TileBack from './components/TileBack';
 const HONOR_INPUT_MAP: Record<string, Tile> = {
   ton: '東',
   nan: '南',
@@ -254,85 +255,14 @@ export default function Home() {
     });
   };
 
-  const restoreHistoryEntry = (entry: HistoryEntry) => {
-    setHand(entry.hand);
-    setWinningTile(entry.winningTile);
-    setAgariType(entry.options.isTsumo ? 'tsumo' : 'ron');
-    setBakaze(entry.options.bakaze);
-    setJikaze(entry.options.jikaze);
-    setRiichi(entry.options.isRiichi);
-    setIsDoubleRiichi(Boolean(entry.options.isDoubleRiichi));
-    setIppatsu(entry.options.isIppatsu);
-    setIsDealer(entry.options.isOya);
-    const restoredMelds = entry.options.melds ? entry.options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : [];
-    setMelds(restoredMelds);
-    setIsTenhou(Boolean(entry.options.isTenhou));
-    setIsChiihou(Boolean(entry.options.isChiihou));
-    setIsHaitei(Boolean(entry.options.isHaitei));
-    setIsHoutei(Boolean(entry.options.isHoutei));
-    setIsRinshan(Boolean(entry.options.isRinshan));
-    setIsChankan(Boolean(entry.options.isChankan));
-    setIsNagashiMangan(Boolean(entry.options.isNagashiMangan));
-    setDoraTiles(entry.options.doraTiles || []);
-    setUraDoraTiles(entry.options.uraDoraTiles || []);
-    const nextAkaDora = {
-      man: Boolean(entry.options.redDora?.man),
-      pin: Boolean(entry.options.redDora?.pin),
-      sou: Boolean(entry.options.redDora?.sou)
-    };
-    setKyotakuCount(Math.max(0, Math.floor(entry.options.kyotaku ?? 0)));
-    setHonbaCount(Math.max(0, Math.floor(entry.options.honba ?? 0)));
-
-    const nextRedHandFlags = entry.redHandFlags ? [...entry.redHandFlags] : entry.hand.map(() => false);
-    const nextRedMeldFlags = entry.redMeldFlags
-      ? entry.redMeldFlags.map(flags => [...flags])
-      : restoredMelds.map(meld => meld.tiles.map(() => false));
-    let nextRedWinningFlag = entry.redWinningFlag ?? false;
-
-    if (!entry.redHandFlags && !entry.redMeldFlags && entry.options.redDora) {
-      const applyRedFlag = (tile: Tile, enabled: boolean) => {
-        if (!enabled) return;
-        const handIndex = entry.hand.findIndex((t, index) => t === tile && !nextRedHandFlags[index]);
-        if (handIndex >= 0) {
-          nextRedHandFlags[handIndex] = true;
-          return;
-        }
-        if (!nextRedWinningFlag && entry.winningTile === tile) {
-          nextRedWinningFlag = true;
-          return;
-        }
-        for (let meldIndex = 0; meldIndex < restoredMelds.length; meldIndex++) {
-          const meld = restoredMelds[meldIndex];
-          const tileIndex = meld.tiles.findIndex((t, index) => t === tile && !nextRedMeldFlags[meldIndex][index]);
-          if (tileIndex >= 0) {
-            nextRedMeldFlags[meldIndex][tileIndex] = true;
-            return;
-          }
-        }
-      };
-
-      applyRedFlag('5m', nextAkaDora.man);
-      applyRedFlag('5p', nextAkaDora.pin);
-      applyRedFlag('5s', nextAkaDora.sou);
-    }
-
-    setRedHandFlags(nextRedHandFlags);
-    setRedMeldInputFlags([]);
-    setRedMeldFlags(nextRedMeldFlags);
-    setRedWinningFlag(nextRedWinningFlag);
-    setResult(entry.result);
-    setError('');
-    setActiveHistoryId(entry.id);
-    setActiveHistoryTab('hand');
-  };
-
   const toggleHistoryEntry = (entry: HistoryEntry) => {
     if (activeHistoryId === entry.id) {
       setActiveHistoryId(null);
       setActiveHistoryTab('hand');
       return;
     }
-    restoreHistoryEntry(entry);
+    setActiveHistoryId(entry.id);
+    setActiveHistoryTab('hand');
   };
 
   const isMenzen = !melds.some(meld => meld.type !== 'ankan');
@@ -888,15 +818,40 @@ export default function Home() {
                         {meld.type === 'ankan' && '暗カン'}
                       </div>
                       <div className="meld-tiles">
-                        {meld.tiles.map((tile, tileIndex) => (
-                          <div
-                            key={tileIndex}
-                            className={`hand-tile${redMeldFlags[index]?.[tileIndex] ? ' hand-tile--red' : ''}`}
-                            style={{ fontSize: '14px' }}
-                          >
-                            <TileFace tile={tile} />
-                          </div>
-                        ))}
+                        {meld.type === 'ankan' ? (
+                          <>
+                            <div key={0} className="hand-tile" style={{ fontSize: '14px' }}>
+                              <TileBack />
+                            </div>
+                            <div
+                              key={1}
+                              className={`hand-tile${redMeldFlags[index]?.[1] ? ' hand-tile--red' : ''}`}
+                              style={{ fontSize: '14px' }}
+                            >
+                              <TileFace tile={meld.tiles[1]} />
+                            </div>
+                            <div
+                              key={2}
+                              className={`hand-tile${redMeldFlags[index]?.[2] ? ' hand-tile--red' : ''}`}
+                              style={{ fontSize: '14px' }}
+                            >
+                              <TileFace tile={meld.tiles[2]} />
+                            </div>
+                            <div key={3} className="hand-tile" style={{ fontSize: '14px' }}>
+                              <TileBack />
+                            </div>
+                          </>
+                        ) : (
+                          meld.tiles.map((tile, tileIndex) => (
+                            <div
+                              key={tileIndex}
+                              className={`hand-tile${redMeldFlags[index]?.[tileIndex] ? ' hand-tile--red' : ''}`}
+                              style={{ fontSize: '14px' }}
+                            >
+                              <TileFace tile={tile} />
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1497,7 +1452,7 @@ export default function Home() {
                     </div>
                   </div>
                   <button className="btn btn-secondary" onClick={() => toggleHistoryEntry(entry)}>
-                    {isActive ? 'この手を非表示' : 'この手を再表示'}
+                    {isActive ? '詳細を閉じる' : '詳細を表示'}
                   </button>
                   {isActive && (
                     <div className="history-detail" style={{ marginTop: '12px', background: '#f8f8ff', padding: '12px', borderRadius: '8px' }}>
