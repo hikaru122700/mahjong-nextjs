@@ -1252,22 +1252,26 @@ export default function Home() {
                 <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
               </div>
               <div className="dora-block" style={{ marginTop: '10px' }}>
-                <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
-                <div className="hand-tiles">
-                  {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
-                {uraDoraTiles.map((tile, index) => (
-                  <div
-                    key={`${tile}-ura-${index}`}
-                    className="hand-tile"
-                    onClick={() => removeDoraTileValue(index, 'ura')}
-                  >
-                    <TileFace tile={tile} />
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
+                    <div className="hand-tiles">
+                      {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
+                      {uraDoraTiles.map((tile, index) => (
+                        <div
+                          key={`${tile}-ura-${index}`}
+                          className="hand-tile"
+                          onClick={() => removeDoraTileValue(index, 'ura')}
+                        >
+                          <TileFace tile={tile} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
                   </div>
-                ))}
+                  {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
+                </div>
               </div>
-              <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
-              {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
-            </div>
               </div>
             </div>
           </div>
