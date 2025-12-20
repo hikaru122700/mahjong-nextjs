@@ -391,17 +391,6 @@ export default function Home() {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   }, [history]);
 
-  useEffect(() => {
-    const next = {
-      man: hasRedSelection('man'),
-      pin: hasRedSelection('pin'),
-      sou: hasRedSelection('sou')
-    };
-    setAkaDora(prev =>
-      prev.man === next.man && prev.pin === next.pin && prev.sou === next.sou ? prev : next
-    );
-  }, [hand, melds, meldInput, winningTile, redHandFlags, redMeldInputFlags, redMeldFlags, redWinningFlag]);
-
   const addTileToHand = (tile: Tile): boolean => {
     const meldTileCount = getMeldTileCount(melds);
     const maxHandSize = 14 - meldTileCount - 1;
