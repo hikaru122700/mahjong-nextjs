@@ -241,6 +241,26 @@ h1 {
   min-height: 100px;
 }
 
+.hand-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 12px;
+}
+
+.hand-summary-column {
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.hand-summary-column + .hand-summary-column {
+  border-left: 1px dashed #e3e6ef;
+  padding-left: 12px;
+}
+
+.hand-summary-winning .hand-tiles {
+  min-height: 64px;
+}
+
 .hand-title {
   font-weight: bold;
   margin-bottom: 10px;
@@ -433,6 +453,21 @@ h1 {
 
   .sticky-actions {
     position: static;
+  }
+
+  .hand-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hand-summary-column {
+    padding-right: 0;
+  }
+
+  .hand-summary-column + .hand-summary-column {
+    border-left: none;
+    border-top: 1px dashed #e3e6ef;
+    padding-left: 0;
+    padding-top: 12px;
   }
 }
 

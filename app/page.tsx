@@ -660,45 +660,61 @@ export default function Home() {
             >
               現在の手牌
             </button>
-            <div className="hand-display">
-              <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - getMeldTileCount(melds) - 1}枚)</div>
-              <div className="hand-tiles">
-                {hand.map((tile, index) => (
-                  <div
-                    key={index}
-                    className="hand-tile"
-                    onClick={() => removeTileFromHand(index)}
-                  >
-                    <TileFace tile={tile} />
-                  </div>
-                ))}
-              </div>
-              <div className="info-text">※ 手牌は自動的にソートされます。</div>
-            </div>
-
-            {/* 鳴き表示 */}
-            <div className="hand-display" style={{ marginTop: '15px' }}>
-              <div className="hand-title">鳴き（副露） (<span>{melds.length}</span>回）</div>
-              <div className="melds-container">
-                {melds.map((meld, index) => (
-                  <div key={index} className="meld-group" onClick={() => removeMeld(index)}>
-                    <div className="meld-type">
-                      {meld.type === 'chii' && 'チー'}
-                      {meld.type === 'pon' && 'ポン'}
-                      {meld.type === 'minkan' && '明カン'}
-                      {meld.type === 'ankan' && '暗カン'}
+            <div className="hand-display hand-summary-grid">
+              <div className="hand-summary-column">
+                <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - getMeldTileCount(melds) - 1}枚)</div>
+                <div className="hand-tiles">
+                  {hand.map((tile, index) => (
+                    <div
+                      key={index}
+                      className="hand-tile"
+                      onClick={() => removeTileFromHand(index)}
+                    >
+                      <TileFace tile={tile} />
                     </div>
-                    <div className="meld-tiles">
-                      {meld.tiles.map((tile, tileIndex) => (
-                        <div key={tileIndex} className="hand-tile" style={{ fontSize: '14px' }}>
-                          <TileFace tile={tile} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="info-text">※ 手牌は自動的にソートされます。</div>
               </div>
-              <div className="info-text">※ クリックして削除できます。</div>
+              <div className="hand-summary-column hand-summary-winning">
+                <div className="hand-title">和了牌 (<span>{winningTile ? 1 : 0}</span>/1枚)</div>
+                <div className="hand-tiles">
+                  {winningTile ? (
+                    <div
+                      className="hand-tile winning-tile"
+                      onClick={removeWinningTile}
+                    >
+                      <TileFace tile={winningTile} />
+                    </div>
+                  ) : (
+                    <div className="info-text">未選択</div>
+                  )}
+                </div>
+                <div className="info-text">※ 和了した牌を1枚選択してください。</div>
+              </div>
+              <div className="hand-summary-column">
+                <div className="hand-title">鳴き（副露） (<span>{melds.length}</span>回）</div>
+                <div className="melds-container">
+                  {melds.map((meld, index) => (
+                    <div key={index} className="meld-group" onClick={() => removeMeld(index)}>
+                      <div className="meld-type">
+                        {meld.type === 'chii' && 'チー'}
+                        {meld.type === 'pon' && 'ポン'}
+                        {meld.type === 'minkan' && '明カン'}
+                        {meld.type === 'ankan' && '暗カン'}
+                      </div>
+                      <div className="meld-tiles">
+                        {meld.tiles.map((tile, tileIndex) => (
+                          <div key={tileIndex} className="hand-tile" style={{ fontSize: '14px' }}>
+                            <TileFace tile={tile} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="info-text">※ クリックして削除できます。</div>
+              </div>
             </div>
 
             {/* 鳴き入力 */}
@@ -779,20 +795,6 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="hand-display" style={{ marginTop: '15px' }}>
-              <div className="hand-title">和了牌 (<span>{winningTile ? 1 : 0}</span>/1枚)</div>
-              <div className="hand-tiles">
-                {winningTile && (
-                  <div
-                    className="hand-tile winning-tile"
-                    onClick={removeWinningTile}
-                  >
-                    <TileFace tile={winningTile} />
-                  </div>
-                )}
-              </div>
-              <div className="info-text">※ 和了した牌を1枚選択してください。</div>
-            </div>
             <div className="controls">
               <button className="btn btn-danger" onClick={clearAll}>すべてクリア</button>
             </div>
