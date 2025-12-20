@@ -88,7 +88,6 @@ export default function Home() {
   const [riichi, setRiichi] = useState<boolean>(false);
   const [isDoubleRiichi, setIsDoubleRiichi] = useState<boolean>(false);
   const [ippatsu, setIppatsu] = useState<boolean>(false);
-  const [menzen, setMenzen] = useState<boolean>(true);
   const [isDealer, setIsDealer] = useState<boolean>(true);
   const [melds, setMelds] = useState<Meld[]>([]);
   const [meldInput, setMeldInput] = useState<Tile[]>([]);
@@ -219,7 +218,6 @@ export default function Home() {
     setRiichi(entry.options.isRiichi);
     setIsDoubleRiichi(Boolean(entry.options.isDoubleRiichi));
     setIppatsu(entry.options.isIppatsu);
-    setMenzen(entry.options.isMenzen);
     setIsDealer(entry.options.isOya);
     setMelds(entry.options.melds ? entry.options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : []);
     setIsTenhou(Boolean(entry.options.isTenhou));
@@ -251,13 +249,12 @@ export default function Home() {
     restoreHistoryEntry(entry);
   };
 
-  // 鳴きの状態に応じて門前/リーチを制御（暗槓は門前扱い）
+  const isMenzen = !melds.some(meld => meld.type !== 'ankan');
+
+  // 鳴きの状態に応じてリーチを制御（暗槓は門前扱い）
   useEffect(() => {
     const hasOpenMeld = melds.some(meld => meld.type !== 'ankan');
     if (hasOpenMeld) {
-      if (menzen) {
-        setMenzen(false);
-      }
       if (riichi) {
         setRiichi(false);
       }
@@ -267,10 +264,8 @@ export default function Home() {
       if (ippatsu) {
         setIppatsu(false);
       }
-    } else if (!menzen) {
-      setMenzen(true);
     }
-  }, [melds, menzen, riichi, isDoubleRiichi, ippatsu]);
+  }, [melds, riichi, isDoubleRiichi, ippatsu]);
 
   useEffect(() => {
     if (agariType === 'tsumo') {
@@ -381,7 +376,6 @@ export default function Home() {
     setRiichi(false);
     setIsDoubleRiichi(false);
     setIppatsu(false);
-    setMenzen(true);
     setIsDealer(true);
     setIsTenhou(false);
     setIsChiihou(false);
@@ -410,7 +404,7 @@ export default function Home() {
       isRiichi: riichi,
       isDoubleRiichi,
       isIppatsu: ippatsu,
-      isMenzen: menzen,
+      isMenzen: isMenzen,
       isOya: isDealer,
       melds: melds.length > 0 ? melds : undefined,
       isTenhou,
@@ -780,13 +774,12 @@ export default function Home() {
                   onChange={(e) => {
                     const checked = e.target.checked;
                     setRiichi(checked);
-                    if (checked) {
-                      setMenzen(true);
-                    } else {
+                    if (!checked) {
                       setIppatsu(false);
                       setIsDoubleRiichi(false);
                     }
                   }}
+                  disabled={!isMenzen}
                 />
                 リーチ
               </label>
@@ -799,10 +792,9 @@ export default function Home() {
                     setIsDoubleRiichi(checked);
                     if (checked) {
                       setRiichi(true);
-                      setMenzen(true);
                     }
                   }}
-                  disabled={!menzen}
+                  disabled={!isMenzen}
                 />
                 ダブルリーチ
               </label>
@@ -815,23 +807,8 @@ export default function Home() {
                 />
                 一発
               </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={menzen}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setMenzen(checked);
-                    if (!checked) {
-                      setRiichi(false);
-                      setIppatsu(false);
-                      setIsDoubleRiichi(false);
-                    }
-                  }}
-                />
-                門前（鳴きなし）
-              </label>
             </div>
+            <div className="info-text">門前は鳴き状態から自動判定されます。</div>
           </div>
           <div className="option-group">
             <div className="option-title">特殊和了条件</div>
