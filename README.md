@@ -2,6 +2,15 @@
 
 麻雀の点数を計算するWebアプリケーションです。Next.js + TypeScriptで実装されています。
 
+## 使用技術
+
+- Next.js 15（App Router / TypeScript構成）
+- React 19 / React DOM 19
+- TypeScript 5
+- ESLint 9（eslint-config-next を使用）
+- Vitest 4（@vitest/coverage-v8 を使用）
+- npm（Makefile経由のコマンドもサポート）
+
 ## 機能
 
 - 牌の選択（萬子、筒子、索子、字牌）
