@@ -13,6 +13,7 @@ import {
   type CalculationResult
 } from '@/lib/mahjong';
 import TileFace from './components/TileFace';
+import TileBack from './components/TileBack';
 const HONOR_INPUT_MAP: Record<string, Tile> = {
   ton: '東',
   nan: '南',
@@ -888,15 +889,40 @@ export default function Home() {
                         {meld.type === 'ankan' && '暗カン'}
                       </div>
                       <div className="meld-tiles">
-                        {meld.tiles.map((tile, tileIndex) => (
-                          <div
-                            key={tileIndex}
-                            className={`hand-tile${redMeldFlags[index]?.[tileIndex] ? ' hand-tile--red' : ''}`}
-                            style={{ fontSize: '14px' }}
-                          >
-                            <TileFace tile={tile} />
-                          </div>
-                        ))}
+                        {meld.type === 'ankan' ? (
+                          <>
+                            <div key={0} className="hand-tile" style={{ fontSize: '14px' }}>
+                              <TileBack />
+                            </div>
+                            <div
+                              key={1}
+                              className={`hand-tile${redMeldFlags[index]?.[1] ? ' hand-tile--red' : ''}`}
+                              style={{ fontSize: '14px' }}
+                            >
+                              <TileFace tile={meld.tiles[1]} />
+                            </div>
+                            <div
+                              key={2}
+                              className={`hand-tile${redMeldFlags[index]?.[2] ? ' hand-tile--red' : ''}`}
+                              style={{ fontSize: '14px' }}
+                            >
+                              <TileFace tile={meld.tiles[2]} />
+                            </div>
+                            <div key={3} className="hand-tile" style={{ fontSize: '14px' }}>
+                              <TileBack />
+                            </div>
+                          </>
+                        ) : (
+                          meld.tiles.map((tile, tileIndex) => (
+                            <div
+                              key={tileIndex}
+                              className={`hand-tile${redMeldFlags[index]?.[tileIndex] ? ' hand-tile--red' : ''}`}
+                              style={{ fontSize: '14px' }}
+                            >
+                              <TileFace tile={tile} />
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   ))}
