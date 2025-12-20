@@ -97,6 +97,12 @@ const ALL_TILES: Tile[] = [
   ...TILES.souzu,
   ...TILES.jihai
 ];
+const WIND_LABEL: Record<string, string> = {
+  ton: '東',
+  nan: '南',
+  sha: '西',
+  pei: '北'
+};
 const BALANCE_WINDOW = 10;
 const MAX_HAND_TRIES = 140;
 const MAX_QUESTION_TRIES = 180;
@@ -654,10 +660,9 @@ export default function ScoreQuizPage() {
             <div className="history-option-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '6px' }}>
               <div>和了方法: {question ? (question.options.isTsumo ? 'ツモ' : 'ロン') : '-'}</div>
               <div>親番: {question ? (question.options.isOya ? '親' : '子') : '-'}</div>
-              <div>場風: {question?.options.bakaze ?? '-'}</div>
-              <div>自風: {question?.options.jikaze ?? '-'}</div>
+              <div>場風: {question ? (WIND_LABEL[question.options.bakaze] ?? question.options.bakaze) : '-'}</div>
+              <div>自風: {question ? (WIND_LABEL[question.options.jikaze] ?? question.options.jikaze) : '-'}</div>
               <div>リーチ: {question ? (question.options.isRiichi ? 'あり' : 'なし') : '-'}</div>
-              <div>門前: {question ? (question.options.isMenzen ? 'あり' : 'なし') : '-'}</div>
             </div>
           </div>
           <div style={{ minWidth: '160px' }}>
