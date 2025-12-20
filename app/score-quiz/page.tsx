@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { calculateScore, TILES, type AgariOptions, type Tile } from '@/lib/mahjong';
+import { calculateScore, sortHand, TILES, type AgariOptions, type Tile } from '@/lib/mahjong';
 import TileFace from '@/app/components/TileFace';
 
 type QuizQuestion = {
@@ -646,11 +646,11 @@ export default function ScoreQuizPage() {
         <div className="hand-display">
           <div className="hand-title">手牌</div>
           <div className="hand-tiles">
-            {question?.hand.map((tile, index) => (
+            {question ? sortHand(question.hand).map((tile, index) => (
               <div key={`${tile}-${index}`} className="hand-tile">
                 <TileFace tile={tile} />
               </div>
-            ))}
+            )) : null}
             {question && (
               <div className="hand-tile winning-tile">
                 <TileFace tile={question.winningTile} />
