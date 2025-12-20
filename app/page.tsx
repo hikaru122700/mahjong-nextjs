@@ -385,20 +385,24 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem(HISTORY_KEY);
-    if (stored) {
-      try {
+    try {
+      const stored = localStorage.getItem(HISTORY_KEY);
+      if (stored) {
         const parsed: HistoryEntry[] = JSON.parse(stored);
         setHistory(parsed);
-      } catch (e) {
-        console.error('Failed to parse history', e);
       }
+    } catch (e) {
+      console.error('Failed to load history from localStorage', e);
     }
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.error('Failed to save history to localStorage', e);
+    }
   }, [history]);
 
   const addTileToHand = (tile: Tile): boolean => {
