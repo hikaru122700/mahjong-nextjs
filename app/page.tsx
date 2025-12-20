@@ -23,22 +23,6 @@ const HONOR_INPUT_MAP: Record<string, Tile> = {
   chun: '中'
 };
 
-const SUIT_TABS = [
-  { key: 'manzu', label: '萬子' },
-  { key: 'pinzu', label: '筒子' },
-  { key: 'souzu', label: '索子' },
-  { key: 'jihai', label: '字牌' }
-] as const;
-
-type SuitKey = (typeof SUIT_TABS)[number]['key'];
-
-const SUIT_TILE_MAP: Record<SuitKey, Tile[]> = {
-  manzu: TILES.manzu,
-  pinzu: TILES.pinzu,
-  souzu: TILES.souzu,
-  jihai: TILES.jihai
-};
-
 const RED_TILES = [
   { tile: '5m', suit: 'man', label: '赤5m' },
   { tile: '5p', suit: 'pin', label: '赤5p' },
@@ -124,13 +108,12 @@ export default function Home() {
   const [isNagashiMangan, setIsNagashiMangan] = useState<boolean>(false);
   const [doraTiles, setDoraTiles] = useState<Tile[]>([]);
   const [uraDoraTiles, setUraDoraTiles] = useState<Tile[]>([]);
-  const [doraIndicatorSuit, setDoraIndicatorSuit] = useState<SuitKey>('manzu');
-  const [uraIndicatorSuit, setUraIndicatorSuit] = useState<SuitKey>('manzu');
   const [akaDora, setAkaDora] = useState<{ man: boolean; pin: boolean; sou: boolean }>({
     man: false,
     pin: false,
     sou: false
   });
+  const [tileSelectMode, setTileSelectMode] = useState<'hand' | 'meld' | 'dora' | 'ura'>('hand');
   const [redHandFlags, setRedHandFlags] = useState<boolean[]>([]);
   const [redMeldInputFlags, setRedMeldInputFlags] = useState<boolean[]>([]);
   const [redMeldFlags, setRedMeldFlags] = useState<boolean[][]>([]);
@@ -374,6 +357,12 @@ export default function Home() {
   }, [agariType, isHaitei, isHoutei, isRinshan, isChankan]);
 
   useEffect(() => {
+    if (!riichi && tileSelectMode === 'ura') {
+      setTileSelectMode('dora');
+    }
+  }, [riichi, tileSelectMode]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = localStorage.getItem(HISTORY_KEY);
     if (stored) {
@@ -481,6 +470,38 @@ export default function Home() {
       setError('');
       setAkaDora(prev => ({ ...prev, [suit]: true }));
     }
+  };
+
+  const handleTileSelect = (tile: Tile) => {
+    if (tileSelectMode === 'meld') {
+      addTileToMeld(tile);
+      return;
+    }
+    if (tileSelectMode === 'dora') {
+      addDoraTileValue('dora', tile);
+      return;
+    }
+    if (tileSelectMode === 'ura') {
+      addDoraTileValue('ura', tile);
+      return;
+    }
+    addTileToHand(tile);
+  };
+
+  const handleRedTileSelect = (tile: Tile, suit: RedSuit) => {
+    if (tileSelectMode === 'meld') {
+      addRedTileToMeld(tile, suit);
+      return;
+    }
+    if (tileSelectMode === 'dora') {
+      addDoraTileValue('dora', tile);
+      return;
+    }
+    if (tileSelectMode === 'ura') {
+      addDoraTileValue('ura', tile);
+      return;
+    }
+    addRedTileToHand(tile, suit);
   };
 
   const removeTileFromMeld = (index: number) => {
@@ -641,6 +662,43 @@ export default function Home() {
           {/* 牌選択セクション */}
           <div className="section compact">
             <div className="section-title">牌を選択</div>
+            <div className="tile-select-modes">
+              <button
+                type="button"
+                className={`btn ${tileSelectMode === 'hand' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTileSelectMode('hand')}
+              >
+                手牌に追加
+              </button>
+              <button
+                type="button"
+                className={`btn ${tileSelectMode === 'meld' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTileSelectMode('meld')}
+              >
+                鳴きに追加
+              </button>
+              <button
+                type="button"
+                className={`btn ${tileSelectMode === 'dora' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTileSelectMode('dora')}
+              >
+                表示ドラ
+              </button>
+              <button
+                type="button"
+                className={`btn ${tileSelectMode === 'ura' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTileSelectMode('ura')}
+                disabled={!riichi}
+              >
+                裏ドラ
+              </button>
+            </div>
+            <div className="info-text">
+              {tileSelectMode === 'hand' && '※ 牌をクリックすると手牌に追加されます。'}
+              {tileSelectMode === 'meld' && '※ 牌をクリックすると鳴き入力に追加されます。'}
+              {tileSelectMode === 'dora' && '※ 牌をクリックすると表示ドラに追加されます。'}
+              {tileSelectMode === 'ura' && '※ 牌をクリックすると裏ドラに追加されます（リーチ時のみ）。'}
+            </div>
             <div className="tile-selector">
               <div className="tile-group">
                 <div className="tile-group-title">萬子（マンズ）</div>
@@ -651,7 +709,7 @@ export default function Home() {
                       <div
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
-                        onClick={() => addTileToHand(tile)}
+                        onClick={() => handleTileSelect(tile)}
                         aria-disabled={isMaxed}
                       >
                         <TileFace tile={tile} />
@@ -662,7 +720,7 @@ export default function Home() {
                     <div
                       key={tile.label}
                       className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
-                      onClick={() => addRedTileToHand(tile.tile, tile.suit)}
+                      onClick={() => handleRedTileSelect(tile.tile, tile.suit)}
                       title={tile.label}
                     >
                       <TileFace tile={tile.tile} />
@@ -680,7 +738,7 @@ export default function Home() {
                       <div
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
-                        onClick={() => addTileToHand(tile)}
+                        onClick={() => handleTileSelect(tile)}
                         aria-disabled={isMaxed}
                       >
                         <TileFace tile={tile} />
@@ -691,7 +749,7 @@ export default function Home() {
                     <div
                       key={tile.label}
                       className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
-                      onClick={() => addRedTileToHand(tile.tile, tile.suit)}
+                      onClick={() => handleRedTileSelect(tile.tile, tile.suit)}
                       title={tile.label}
                     >
                       <TileFace tile={tile.tile} />
@@ -709,7 +767,7 @@ export default function Home() {
                       <div
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
-                        onClick={() => addTileToHand(tile)}
+                        onClick={() => handleTileSelect(tile)}
                         aria-disabled={isMaxed}
                       >
                         <TileFace tile={tile} />
@@ -720,7 +778,7 @@ export default function Home() {
                     <div
                       key={tile.label}
                       className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
-                      onClick={() => addRedTileToHand(tile.tile, tile.suit)}
+                      onClick={() => handleRedTileSelect(tile.tile, tile.suit)}
                       title={tile.label}
                     >
                       <TileFace tile={tile.tile} />
@@ -738,7 +796,7 @@ export default function Home() {
                       <div
                         key={tile}
                         className={`tile${isMaxed ? ' tile--maxed' : ''}`}
-                        onClick={() => addTileToHand(tile)}
+                        onClick={() => handleTileSelect(tile)}
                         aria-disabled={isMaxed}
                       >
                         <TileFace tile={tile} />
@@ -835,37 +893,7 @@ export default function Home() {
                   <option value="ankan">暗カン（槓子）</option>
                 </select>
               </div>
-              <div className="tile-selector" style={{ fontSize: '12px', marginBottom: '10px' }}>
-                <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>牌を選択:</div>
-                <div className="tile-group">
-                  <div className="tiles">
-                    {[...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai].map(tile => {
-                      const isMaxed = getTileCount(tile) >= 4;
-                      return (
-                        <div
-                          key={tile}
-                          className={`tile tile--mini${isMaxed ? ' tile--maxed' : ''}`}
-                          onClick={() => addTileToMeld(tile)}
-                          aria-disabled={isMaxed}
-                        >
-                          <TileFace tile={tile} />
-                        </div>
-                      );
-                    })}
-                    {RED_TILES.map(tile => (
-                      <div
-                        key={tile.label}
-                        className={`tile tile--mini tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
-                        onClick={() => addRedTileToMeld(tile.tile, tile.suit)}
-                        title={tile.label}
-                      >
-                        <TileFace tile={tile.tile} />
-                        <span className="tile-badge">赤</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
               <div className="hand-tiles">
                 {meldInput.map((tile, index) => (
                   <div
@@ -1178,52 +1206,28 @@ export default function Home() {
                   </label>
                 </div>
               </div>
-              <div className="option-group">
-                <div className="option-title">ドラ設定</div>
-                <div className="dora-block">
-                  <div className="option-subtitle">表示ドラ</div>
-                  <div className="hand-tiles">
-                    {doraTiles.length === 0 && <div className="info-text">未設定</div>}
-                {doraTiles.map((tile, index) => (
-                  <div
-                    key={`${tile}-${index}`}
-                    className="hand-tile"
-                    onClick={() => removeDoraTileValue(index, 'dora')}
-                  >
-                    <TileFace tile={tile} />
-                  </div>
-                ))}
-              </div>
-              <div className="dora-picker">
-                <div className="tile-tabs">
-                  {SUIT_TABS.map(tab => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      className={`tile-tab${doraIndicatorSuit === tab.key ? ' is-active' : ''}`}
-                      onClick={() => setDoraIndicatorSuit(tab.key)}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="tiles">
-                  {SUIT_TILE_MAP[doraIndicatorSuit].map(tile => (
+            <div className="option-group">
+              <div className="option-title">ドラ設定</div>
+              <div className="dora-block">
+                <div className="option-subtitle">表示ドラ</div>
+                <div className="hand-tiles">
+                  {doraTiles.length === 0 && <div className="info-text">未設定</div>}
+                  {doraTiles.map((tile, index) => (
                     <div
-                      key={tile}
-                      className="tile tile--mini"
-                      onClick={() => addDoraTileValue('dora', tile)}
+                      key={`${tile}-${index}`}
+                      className="hand-tile"
+                      onClick={() => removeDoraTileValue(index, 'dora')}
                     >
                       <TileFace tile={tile} />
                     </div>
                   ))}
                 </div>
+                <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
               </div>
-            </div>
-            <div className="dora-block" style={{ marginTop: '10px' }}>
-              <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
-              <div className="hand-tiles">
-                    {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
+              <div className="dora-block" style={{ marginTop: '10px' }}>
+                <div className="option-subtitle">裏ドラ（リーチ時のみ）</div>
+                <div className="hand-tiles">
+                  {uraDoraTiles.length === 0 && <div className="info-text">未設定</div>}
                 {uraDoraTiles.map((tile, index) => (
                   <div
                     key={`${tile}-ura-${index}`}
@@ -1234,32 +1238,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <div className="dora-picker">
-                <div className="tile-tabs">
-                  {SUIT_TABS.map(tab => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      className={`tile-tab${uraIndicatorSuit === tab.key ? ' is-active' : ''}`}
-                      onClick={() => setUraIndicatorSuit(tab.key)}
-                      disabled={!riichi}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="tiles">
-                  {SUIT_TILE_MAP[uraIndicatorSuit].map(tile => (
-                    <div
-                      key={tile}
-                      className={`tile tile--mini${!riichi ? ' is-disabled' : ''}`}
-                      onClick={() => addDoraTileValue('ura', tile)}
-                    >
-                      <TileFace tile={tile} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <div className="info-text">※ 牌選択は上部の牌テーブルから行います。</div>
               {!riichi && <div className="info-text">リーチ時のみ有効です</div>}
             </div>
                 <div className="dora-block" style={{ marginTop: '10px' }}>
