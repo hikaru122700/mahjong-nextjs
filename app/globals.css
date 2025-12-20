@@ -247,6 +247,27 @@ h1 {
   margin-bottom: 10px;
 }
 
+.melds-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.meld-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f4f6fb;
+}
+
+.meld-tiles {
+  display: flex;
+  gap: 6px;
+}
+
 .hand-tile {
   width: clamp(34px, 7vw, 48px);
   height: clamp(48px, 10vw, 64px);
