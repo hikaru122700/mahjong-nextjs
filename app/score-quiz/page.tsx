@@ -149,7 +149,7 @@ const pickRandomMeld = (includeHonors = true): Tile[] => {
   return pickRandomTriplet(includeHonors);
 };
 
-const pickSuitPair = (numbers = SUIT_NUMBERS): Tile[] => {
+const pickSuitPair = (numbers: readonly number[] = SUIT_NUMBERS): Tile[] => {
   const suit = pickOne(SUITS);
   const num = pickOne(numbers);
   return [`${num}${suit}`, `${num}${suit}`];
