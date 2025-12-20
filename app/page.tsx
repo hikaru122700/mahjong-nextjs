@@ -80,6 +80,8 @@ const cloneOptionsForHistory = (options: AgariOptions): AgariOptions => ({
   doraTiles: options.doraTiles ? [...options.doraTiles] : [],
   uraDoraTiles: options.uraDoraTiles ? [...options.uraDoraTiles] : [],
   redDora: options.redDora ? { ...options.redDora } : undefined,
+  kyotaku: options.kyotaku ?? 0,
+  honba: options.honba ?? 0,
 });
 
 const formatBooleanOption = (value?: boolean) => (value ? 'あり' : 'なし');
@@ -108,6 +110,8 @@ export default function Home() {
   const [isNagashiMangan, setIsNagashiMangan] = useState<boolean>(false);
   const [doraTiles, setDoraTiles] = useState<Tile[]>([]);
   const [uraDoraTiles, setUraDoraTiles] = useState<Tile[]>([]);
+  const [kyotakuCount, setKyotakuCount] = useState<number>(0);
+  const [honbaCount, setHonbaCount] = useState<number>(0);
   const [akaDora, setAkaDora] = useState<{ man: boolean; pin: boolean; sou: boolean }>({
     man: false,
     pin: false,
@@ -279,6 +283,8 @@ export default function Home() {
       sou: Boolean(entry.options.redDora?.sou)
     };
     setAkaDora(nextAkaDora);
+    setKyotakuCount(Math.max(0, Math.floor(entry.options.kyotaku ?? 0)));
+    setHonbaCount(Math.max(0, Math.floor(entry.options.honba ?? 0)));
 
     const nextRedHandFlags = entry.hand.map(() => false);
     const nextRedMeldFlags = restoredMelds.map(meld => meld.tiles.map(() => false));
@@ -627,7 +633,9 @@ export default function Home() {
         man: akaDora.man ? 1 : 0,
         pin: akaDora.pin ? 1 : 0,
         sou: akaDora.sou ? 1 : 0
-      }
+      },
+      kyotaku: kyotakuCount,
+      honba: honbaCount
     };
 
     const calcOptions: AgariOptions = {
@@ -1206,6 +1214,47 @@ export default function Home() {
                   </label>
                 </div>
               </div>
+              <div className="option-group">
+                <div className="option-title">供託・本場</div>
+                <div className="counter-group">
+                  <div className="counter-card">
+                    <span className="counter-label">供託</span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary counter-btn"
+                      onClick={() => setKyotakuCount(prev => Math.max(0, prev - 1))}
+                    >
+                      -
+                    </button>
+                    <span className="counter-value">{kyotakuCount}</span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary counter-btn"
+                      onClick={() => setKyotakuCount(prev => prev + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="counter-card">
+                    <span className="counter-label">本場</span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary counter-btn"
+                      onClick={() => setHonbaCount(prev => Math.max(0, prev - 1))}
+                    >
+                      -
+                    </button>
+                    <span className="counter-value">{honbaCount}</span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary counter-btn"
+                      onClick={() => setHonbaCount(prev => prev + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
             <div className="option-group">
               <div className="option-title">ドラ設定</div>
               <div className="dora-block">
@@ -1370,6 +1419,8 @@ export default function Home() {
               <div>嶺上: {formatBooleanOption(isRinshan)}</div>
               <div>槍槓: {formatBooleanOption(isChankan)}</div>
               <div>流し満貫: {formatBooleanOption(isNagashiMangan)}</div>
+              <div>供託: {kyotakuCount}</div>
+              <div>本場: {honbaCount}</div>
             </div>
           )}
           {activeInfoTab === 'result' && (
@@ -1388,6 +1439,22 @@ export default function Home() {
                     <span className="result-label">点数</span>
                     <span className="result-value">{result.score}</span>
                   </div>
+                  {result.scoreBreakdown && (
+                    <>
+                      <div className="result-row">
+                        <span className="result-label">基本点</span>
+                        <span className="result-value">{result.scoreBreakdown.baseText}</span>
+                      </div>
+                      <div className="result-row">
+                        <span className="result-label">本場</span>
+                        <span className="result-value">{result.scoreBreakdown.honbaText ?? 'なし'}</span>
+                      </div>
+                      <div className="result-row">
+                        <span className="result-label">供託</span>
+                        <span className="result-value">{result.scoreBreakdown.kyotakuText ?? 'なし'}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="yaku-list">
                   <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#667eea', fontSize: '1.1em' }}>
@@ -1511,12 +1578,21 @@ export default function Home() {
                             <div>嶺上: {formatBooleanOption(entry.options.isRinshan)}</div>
                             <div>槍槓: {formatBooleanOption(entry.options.isChankan)}</div>
                             <div>流し満貫: {formatBooleanOption(entry.options.isNagashiMangan)}</div>
+                            <div>供託: {entry.options.kyotaku ?? 0}</div>
+                            <div>本場: {entry.options.honba ?? 0}</div>
                           </div>
                         )}
                         {activeHistoryTab === 'result' && (
                           <div>
                             <div>翻数: {entry.result.han}翻 / 符: {entry.result.fu}符</div>
                             <div style={{ marginTop: '4px' }}>点数: {entry.result.score}</div>
+                            {entry.result.scoreBreakdown && (
+                              <>
+                                <div style={{ marginTop: '4px' }}>基本点: {entry.result.scoreBreakdown.baseText}</div>
+                                <div style={{ marginTop: '4px' }}>本場: {entry.result.scoreBreakdown.honbaText ?? 'なし'}</div>
+                                <div style={{ marginTop: '4px' }}>供託: {entry.result.scoreBreakdown.kyotakuText ?? 'なし'}</div>
+                              </>
+                            )}
                             <div style={{ marginTop: '4px' }}>成立役: {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}</div>
                           </div>
                         )}

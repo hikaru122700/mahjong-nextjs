@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateFu,
   calculateFinalScore,
+  calculateFinalScoreWithBonus,
   calculateScore,
   detectYaku,
   isWinningHand,
@@ -210,6 +211,21 @@ describe('calculateFinalScore', () => {
 
   it('computes child tsumo mangan', () => {
     expect(calculateFinalScore(5, 30, false, true)).toBe('子: 2000点、親: 4000点（合計8000点）');
+  });
+});
+
+describe('calculateFinalScoreWithBonus', () => {
+  it('adds honba and kyotaku for child ron', () => {
+    const result = calculateFinalScoreWithBonus(3, 30, false, false, 2, 1);
+    expect(result.baseText).toBe('3900点');
+    expect(result.honbaText).toBe('600点');
+    expect(result.kyotakuText).toBe('1000点');
+    expect(result.totalText).toBe('4500点 + 供託1000点 = 合計5500点');
+  });
+
+  it('adds honba for child tsumo', () => {
+    const result = calculateFinalScoreWithBonus(5, 30, false, true, 1, 0);
+    expect(result.totalText).toBe('子: 2100点、親: 4100点（合計8300点）');
   });
 });
 
