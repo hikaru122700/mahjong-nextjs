@@ -535,32 +535,6 @@ h1 {
   margin-top: 10px;
 }
 
-.tile-input-card {
-  background: #fff;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.tile-input-card input {
-  padding: 10px;
-  border: 2px solid #667eea;
-  border-radius: 6px;
-  font-size: 1em;
-}
-
-.tile-input-card input.input-error {
-  border-color: #dc3545;
-}
-
-.tile-input-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
 
 .history-list {
   display: flex;
@@ -627,10 +601,6 @@ h1 {
 }
 
 @media (max-width: 600px) {
-  .tile-input-actions {
-    flex-direction: column;
-  }
-
   .history-item {
     flex-direction: column;
   }
