@@ -431,6 +431,39 @@ h1 {
   gap: 6px;
 }
 
+.counter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.counter-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.counter-label {
+  font-weight: 600;
+  color: #444;
+}
+
+.counter-value {
+  min-width: 32px;
+  text-align: center;
+  font-weight: bold;
+  color: #333;
+}
+
+.counter-btn {
+  padding: 4px 10px;
+  min-width: 32px;
+}
+
 @media (max-width: 960px) {
   .layout-grid {
     grid-template-columns: 1fr;

@@ -36,6 +36,8 @@ export interface AgariOptions {
     pin: number;
     sou: number;
   };
+  kyotaku?: number;
+  honba?: number;
 }
 
 export interface CalculationResult {
@@ -43,6 +45,15 @@ export interface CalculationResult {
   fu: number;
   score: string;
   yaku: Yaku[];
+  scoreBreakdown?: ScoreBreakdown;
+}
+
+export interface ScoreBreakdown {
+  baseText: string;
+  honbaText: string | null;
+  kyotakuText: string | null;
+  totalText: string;
+  totalPoints: number;
 }
 
 export const TILES = {
@@ -1469,6 +1480,12 @@ export function calculateFu(
 }
 
 export function calculateFinalScore(han: number, fu: number, isOya: boolean, isTsumo: boolean): string {
+  return getBaseScoreDetails(han, fu, isOya, isTsumo).baseText;
+}
+
+const normalizeCount = (value?: number) => Math.max(0, Math.floor(value ?? 0));
+
+const getBaseScoreDetails = (han: number, fu: number, isOya: boolean, isTsumo: boolean) => {
   let baseScore: number;
 
   // 満貫以上
@@ -1483,26 +1500,91 @@ export function calculateFinalScore(han: number, fu: number, isOya: boolean, isT
     baseScore = fu * Math.pow(2, 2 + han);
   }
 
-  let score: string;
   if (isOya) {
     if (isTsumo) {
       const perPerson = Math.ceil(baseScore * 2 / 100) * 100;
-      score = `${perPerson}点オール（合計${perPerson * 3}点）`;
-    } else {
-      score = `${Math.ceil(baseScore * 6 / 100) * 100}点`;
+      return {
+        baseText: `${perPerson}点オール（合計${perPerson * 3}点）`,
+        baseTotal: perPerson * 3,
+        perPerson
+      };
     }
-  } else {
-    if (isTsumo) {
-      const ko = Math.ceil(baseScore / 100) * 100;
-      const oya = Math.ceil(baseScore * 2 / 100) * 100;
-      score = `子: ${ko}点、親: ${oya}点（合計${ko * 2 + oya}点）`;
-    } else {
-      score = `${Math.ceil(baseScore * 4 / 100) * 100}点`;
-    }
+    const ron = Math.ceil(baseScore * 6 / 100) * 100;
+    return { baseText: `${ron}点`, baseTotal: ron, ron };
   }
 
-  return score;
-}
+  if (isTsumo) {
+    const ko = Math.ceil(baseScore / 100) * 100;
+    const oya = Math.ceil(baseScore * 2 / 100) * 100;
+    return {
+      baseText: `子: ${ko}点、親: ${oya}点（合計${ko * 2 + oya}点）`,
+      baseTotal: ko * 2 + oya,
+      ko,
+      oya
+    };
+  }
+
+  const ron = Math.ceil(baseScore * 4 / 100) * 100;
+  return { baseText: `${ron}点`, baseTotal: ron, ron };
+};
+
+export const calculateFinalScoreWithBonus = (
+  han: number,
+  fu: number,
+  isOya: boolean,
+  isTsumo: boolean,
+  honba?: number,
+  kyotaku?: number
+): ScoreBreakdown => {
+  const normalizedHonba = normalizeCount(honba);
+  const normalizedKyotaku = normalizeCount(kyotaku);
+  const honbaPoints = normalizedHonba * 300;
+  const kyotakuPoints = normalizedKyotaku * 1000;
+  const baseDetails = getBaseScoreDetails(han, fu, isOya, isTsumo);
+  const totalPoints = baseDetails.baseTotal + honbaPoints + kyotakuPoints;
+
+  let totalText: string;
+  if (isOya) {
+    if (isTsumo) {
+      const perPerson = baseDetails.perPerson ?? 0;
+      const perPersonTotal = perPerson + normalizedHonba * 100;
+      const totalPayment = perPersonTotal * 3;
+      totalText = kyotakuPoints > 0
+        ? `${perPersonTotal}点オール（合計${totalPayment}点） + 供託${kyotakuPoints}点 = 合計${totalPoints}点`
+        : `${perPersonTotal}点オール（合計${totalPayment}点）`;
+    } else {
+      const ron = (baseDetails.ron ?? 0) + honbaPoints;
+      totalText = kyotakuPoints > 0
+        ? `${ron}点 + 供託${kyotakuPoints}点 = 合計${totalPoints}点`
+        : `${ron}点`;
+    }
+  } else if (isTsumo) {
+    const ko = (baseDetails.ko ?? 0) + normalizedHonba * 100;
+    const oya = (baseDetails.oya ?? 0) + normalizedHonba * 100;
+    const totalPayment = ko * 2 + oya;
+    totalText = kyotakuPoints > 0
+      ? `子: ${ko}点、親: ${oya}点（合計${totalPayment}点） + 供託${kyotakuPoints}点 = 合計${totalPoints}点`
+      : `子: ${ko}点、親: ${oya}点（合計${totalPayment}点）`;
+  } else {
+    const ron = (baseDetails.ron ?? 0) + honbaPoints;
+    totalText = kyotakuPoints > 0
+      ? `${ron}点 + 供託${kyotakuPoints}点 = 合計${totalPoints}点`
+      : `${ron}点`;
+  }
+
+  const honbaText = normalizedHonba > 0
+    ? (isTsumo ? `${normalizedHonba * 100}点オール（合計${honbaPoints}点）` : `${honbaPoints}点`)
+    : null;
+  const kyotakuText = normalizedKyotaku > 0 ? `${kyotakuPoints}点` : null;
+
+  return {
+    baseText: baseDetails.baseText,
+    honbaText,
+    kyotakuText,
+    totalText,
+    totalPoints
+  };
+};
 
 export function calculateScore(
   hand: Tile[],
@@ -1549,7 +1631,14 @@ export function calculateScore(
   const fu = calculateFu(fullHand, winningTile, options.isTsumo, isMenzenHand, options.bakaze, options.jikaze, melds);
 
   // 点数計算
-  const score = calculateFinalScore(totalHan, fu, options.isOya, options.isTsumo);
+  const scoreBreakdown = calculateFinalScoreWithBonus(
+    totalHan,
+    fu,
+    options.isOya,
+    options.isTsumo,
+    options.honba,
+    options.kyotaku
+  );
 
-  return { han: totalHan, fu, score, yaku };
+  return { han: totalHan, fu, score: scoreBreakdown.totalText, yaku, scoreBreakdown };
 }
