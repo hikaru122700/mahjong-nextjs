@@ -12,6 +12,7 @@ import {
   type AgariOptions,
   type CalculationResult
 } from '@/lib/mahjong';
+import TileFace from './components/TileFace';
 
 const ALL_TILES: Tile[] = [...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai];
 const HONOR_INPUT_MAP: Record<string, Tile> = {
@@ -88,7 +89,6 @@ export default function Home() {
   const [riichi, setRiichi] = useState<boolean>(false);
   const [isDoubleRiichi, setIsDoubleRiichi] = useState<boolean>(false);
   const [ippatsu, setIppatsu] = useState<boolean>(false);
-  const [menzen, setMenzen] = useState<boolean>(true);
   const [isDealer, setIsDealer] = useState<boolean>(true);
   const [melds, setMelds] = useState<Meld[]>([]);
   const [meldInput, setMeldInput] = useState<Tile[]>([]);
@@ -219,7 +219,6 @@ export default function Home() {
     setRiichi(entry.options.isRiichi);
     setIsDoubleRiichi(Boolean(entry.options.isDoubleRiichi));
     setIppatsu(entry.options.isIppatsu);
-    setMenzen(entry.options.isMenzen);
     setIsDealer(entry.options.isOya);
     setMelds(entry.options.melds ? entry.options.melds.map(meld => ({ type: meld.type, tiles: [...meld.tiles] })) : []);
     setIsTenhou(Boolean(entry.options.isTenhou));
@@ -251,13 +250,12 @@ export default function Home() {
     restoreHistoryEntry(entry);
   };
 
-  // 鳴きの状態に応じて門前/リーチを制御（暗槓は門前扱い）
+  const isMenzen = !melds.some(meld => meld.type !== 'ankan');
+
+  // 鳴きの状態に応じてリーチを制御（暗槓は門前扱い）
   useEffect(() => {
     const hasOpenMeld = melds.some(meld => meld.type !== 'ankan');
     if (hasOpenMeld) {
-      if (menzen) {
-        setMenzen(false);
-      }
       if (riichi) {
         setRiichi(false);
       }
@@ -267,10 +265,8 @@ export default function Home() {
       if (ippatsu) {
         setIppatsu(false);
       }
-    } else if (!menzen) {
-      setMenzen(true);
     }
-  }, [melds, menzen, riichi, isDoubleRiichi, ippatsu]);
+  }, [melds, riichi, isDoubleRiichi, ippatsu]);
 
   useEffect(() => {
     if (agariType === 'tsumo') {
@@ -381,7 +377,6 @@ export default function Home() {
     setRiichi(false);
     setIsDoubleRiichi(false);
     setIppatsu(false);
-    setMenzen(true);
     setIsDealer(true);
     setIsTenhou(false);
     setIsChiihou(false);
@@ -410,7 +405,7 @@ export default function Home() {
       isRiichi: riichi,
       isDoubleRiichi,
       isIppatsu: ippatsu,
-      isMenzen: menzen,
+      isMenzen: isMenzen,
       isOya: isDealer,
       melds: melds.length > 0 ? melds : undefined,
       isTenhou,
@@ -458,7 +453,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -472,7 +467,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -486,7 +481,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -500,7 +495,7 @@ export default function Home() {
                   className="tile"
                   onClick={() => addTileToHand(tile)}
                 >
-                  {TILE_DISPLAY[tile]}
+                  <TileFace tile={tile} />
                 </div>
               ))}
             </div>
@@ -520,7 +515,7 @@ export default function Home() {
                 className="hand-tile"
                 onClick={() => removeTileFromHand(index)}
               >
-                {TILE_DISPLAY[tile]}
+                <TileFace tile={tile} />
               </div>
             ))}
           </div>
@@ -542,7 +537,7 @@ export default function Home() {
                 <div className="meld-tiles">
                   {meld.tiles.map((tile, tileIndex) => (
                     <div key={tileIndex} className="hand-tile" style={{ fontSize: '14px' }}>
-                      {TILE_DISPLAY[tile]}
+                      <TileFace tile={tile} />
                     </div>
                   ))}
                 </div>
@@ -574,11 +569,10 @@ export default function Home() {
                 {[...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai].map(tile => (
                   <div
                     key={tile}
-                    className="tile"
-                    style={{ fontSize: '12px', padding: '3px 5px' }}
+                    className="tile tile--mini"
                     onClick={() => addTileToMeld(tile)}
                   >
-                    {TILE_DISPLAY[tile]}
+                    <TileFace tile={tile} />
                   </div>
                 ))}
               </div>
@@ -591,7 +585,7 @@ export default function Home() {
                 className="hand-tile"
                 onClick={() => removeTileFromMeld(index)}
               >
-                {TILE_DISPLAY[tile]}
+                <TileFace tile={tile} />
               </div>
             ))}
           </div>
@@ -624,7 +618,7 @@ export default function Home() {
                 className="hand-tile winning-tile"
                 onClick={removeWinningTile}
               >
-                {TILE_DISPLAY[winningTile]}
+                <TileFace tile={winningTile} />
               </div>
             )}
           </div>
@@ -780,13 +774,12 @@ export default function Home() {
                   onChange={(e) => {
                     const checked = e.target.checked;
                     setRiichi(checked);
-                    if (checked) {
-                      setMenzen(true);
-                    } else {
+                    if (!checked) {
                       setIppatsu(false);
                       setIsDoubleRiichi(false);
                     }
                   }}
+                  disabled={!isMenzen}
                 />
                 リーチ
               </label>
@@ -799,10 +792,9 @@ export default function Home() {
                     setIsDoubleRiichi(checked);
                     if (checked) {
                       setRiichi(true);
-                      setMenzen(true);
                     }
                   }}
-                  disabled={!menzen}
+                  disabled={!isMenzen}
                 />
                 ダブルリーチ
               </label>
@@ -815,23 +807,8 @@ export default function Home() {
                 />
                 一発
               </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={menzen}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setMenzen(checked);
-                    if (!checked) {
-                      setRiichi(false);
-                      setIppatsu(false);
-                      setIsDoubleRiichi(false);
-                    }
-                  }}
-                />
-                門前（鳴きなし）
-              </label>
             </div>
+            <div className="info-text">門前は鳴き状態から自動判定されます。</div>
           </div>
           <div className="option-group">
             <div className="option-title">特殊和了条件</div>
@@ -928,7 +905,7 @@ export default function Home() {
                     className="hand-tile"
                     onClick={() => removeDoraTileValue(index, 'dora')}
                   >
-                    {TILE_DISPLAY[tile]}
+                    <TileFace tile={tile} />
                   </div>
                 ))}
               </div>
@@ -955,7 +932,7 @@ export default function Home() {
                     className="hand-tile"
                     onClick={() => removeDoraTileValue(index, 'ura')}
                   >
-                    {TILE_DISPLAY[tile]}
+                    <TileFace tile={tile} />
                   </div>
                 ))}
               </div>
@@ -1068,7 +1045,18 @@ export default function Home() {
                       {new Date(entry.timestamp).toLocaleString()} / {entry.result.han}翻 {entry.result.fu}符
                     </div>
                     <div className="history-hand">
-                      {entry.hand.join(' ')} | 和了牌: {entry.winningTile}
+                      <span className="history-label">手牌</span>
+                      <div className="history-tiles">
+                        {entry.hand.map((tile, index) => (
+                          <span key={`${tile}-${index}`} className="history-tile">
+                            <TileFace tile={tile} />
+                          </span>
+                        ))}
+                      </div>
+                      <span className="history-label">和了牌</span>
+                      <span className="history-tile history-tile-winning">
+                        <TileFace tile={entry.winningTile} />
+                      </span>
                     </div>
                     <div className="history-yaku">
                       {entry.result.yaku.map(y => `${y.name}(${y.han}翻)`).join('、 ')}
@@ -1094,8 +1082,20 @@ export default function Home() {
                       <div className="history-detail-content">
                         {activeHistoryTab === 'hand' && (
                           <div>
-                            <div>手牌: {entry.hand.join(' ')}</div>
-                            <div style={{ marginTop: '4px' }}>和了牌: {entry.winningTile}</div>
+                            <div className="history-hand">
+                              <span className="history-label">手牌</span>
+                              <div className="history-tiles">
+                                {entry.hand.map((tile, index) => (
+                                  <span key={`${tile}-${index}`} className="history-tile">
+                                    <TileFace tile={tile} />
+                                  </span>
+                                ))}
+                              </div>
+                              <span className="history-label">和了牌</span>
+                              <span className="history-tile history-tile-winning">
+                                <TileFace tile={entry.winningTile} />
+                              </span>
+                            </div>
                             <div style={{ marginTop: '4px' }}>鳴き: {meldSummary}</div>
                           </div>
                         )}
