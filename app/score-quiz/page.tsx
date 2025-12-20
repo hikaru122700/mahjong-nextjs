@@ -15,6 +15,8 @@ type QuizQuestion = {
   expectedText: string;
   isCorrect: boolean;
   doraIndicators: Tile[];
+  han: number;
+  fu: number;
 };
 
 type CandidateQuestion = {
@@ -591,7 +593,9 @@ const generateQuestion = (history: boolean[]): QuizQuestion | null => {
       presentedText,
       expectedText,
       isCorrect: shouldBeCorrect,
-      doraIndicators: candidate.doraIndicators
+      doraIndicators: candidate.doraIndicators,
+      han: calcResult.han,
+      fu: calcResult.fu
     };
   }
   return null;
@@ -702,6 +706,7 @@ export default function ScoreQuizPage() {
             <div>{judgeResult.ok ? '○ 正解！' : '× 不正解'}</div>
             <div>あなたの回答: {judgeResult.choice === 'ok' ? '○' : '×'}</div>
             <div>候補は{judgeResult.isCorrect ? '正しい' : '誤り'}でした。</div>
+            {question && <div>翻数: {question.han}翻 / 符: {question.fu}符</div>}
             {judgeResult.ok && judgeResult.choice === 'ng' && (
               <div>正解: {judgeResult.expectedText}</div>
             )}
