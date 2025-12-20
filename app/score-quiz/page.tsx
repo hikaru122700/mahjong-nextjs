@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { calculateScore, type AgariOptions, type Tile } from '@/lib/mahjong';
+import { calculateScore, TILES, type AgariOptions, type Tile } from '@/lib/mahjong';
 import TileFace from '@/app/components/TileFace';
 
 type QuizQuestion = {
@@ -14,6 +14,7 @@ type QuizQuestion = {
   presentedText: string;
   expectedText: string;
   isCorrect: boolean;
+  doraIndicators: Tile[];
 };
 
 type CandidateQuestion = {
@@ -22,6 +23,7 @@ type CandidateQuestion = {
   options: AgariOptions;
   label: string;
   requiredYaku: string[];
+  doraIndicators: Tile[];
 };
 
 const buildOptions = (overrides: Partial<AgariOptions>): AgariOptions => ({
@@ -89,12 +91,42 @@ const SEQUENCE_STARTS = [1, 2, 3, 4, 5, 6, 7] as const;
 const NON_EDGE_SEQUENCE_STARTS = [2, 3, 4, 5, 6] as const;
 const HONORS = ['東', '南', '西', '北', '白', '發', '中'] as const;
 const YAKUHAI_TILES = ['東', '白', '發', '中'] as const;
+const ALL_TILES: Tile[] = [
+  ...TILES.manzu,
+  ...TILES.pinzu,
+  ...TILES.souzu,
+  ...TILES.jihai
+];
 const BALANCE_WINDOW = 10;
 const MAX_HAND_TRIES = 140;
 const MAX_QUESTION_TRIES = 180;
 const MAX_PAIR_TRIES = 40;
 
 const pickOne = <T,>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)];
+
+const getDoraFromIndicator = (tile: Tile): Tile => {
+  if (tile.length === 2) {
+    const num = Number(tile[0]);
+    const suit = tile[1];
+    const next = num === 9 ? 1 : num + 1;
+    return `${next}${suit}` as Tile;
+  }
+  const honorOrder: Tile[] = ['東', '南', '西', '北', '白', '發', '中'];
+  const index = honorOrder.indexOf(tile);
+  return honorOrder[(index + 1) % honorOrder.length];
+};
+
+const buildRandomExtras = (): {
+  isRiichi: boolean;
+  doraIndicators: Tile[];
+  doraTiles: Tile[];
+} => {
+  const isRiichi = Math.random() < 0.35;
+  const indicatorCount = Math.random() < 0.4 ? 0 : Math.random() < 0.7 ? 1 : 2;
+  const doraIndicators: Tile[] = Array.from({ length: indicatorCount }, () => pickOne(ALL_TILES));
+  const doraTiles = doraIndicators.map(getDoraFromIndicator);
+  return { isRiichi, doraIndicators, doraTiles };
+};
 
 const applyTiles = (counts: Record<string, number>, target: Tile[], tiles: Tile[]): boolean => {
   const addCounts: Record<string, number> = {};
@@ -387,6 +419,7 @@ const makeIncorrectScore = (expected: ExpectedScore): ExpectedScore => {
 const buildRiichiCandidate = (): CandidateQuestion | null => {
   const tiles = createAnyMenzenHand();
   if (!tiles) return null;
+  const extras = buildRandomExtras();
   const winningTile = pickOne(tiles);
   return {
     tiles,
@@ -394,74 +427,93 @@ const buildRiichiCandidate = (): CandidateQuestion | null => {
     options: buildOptions({
       isRiichi: true,
       isTsumo: Math.random() < 0.5,
-      isOya: Math.random() < 0.5
+      isOya: Math.random() < 0.5,
+      doraTiles: extras.doraTiles
     }),
     label: 'リーチ',
-    requiredYaku: ['リーチ']
+    requiredYaku: ['リーチ'],
+    doraIndicators: extras.doraIndicators
   };
 };
 
 const buildPinfuCandidate = (): CandidateQuestion | null => {
   const pinfu = createPinfuHand();
   if (!pinfu) return null;
+  const extras = buildRandomExtras();
   return {
     tiles: pinfu.tiles,
     winningTile: pinfu.winningTile,
     options: buildOptions({
       isTsumo: Math.random() < 0.5,
-      isOya: Math.random() < 0.5
+      isOya: Math.random() < 0.5,
+      isRiichi: extras.isRiichi,
+      doraTiles: extras.doraTiles
     }),
     label: '平和',
-    requiredYaku: ['平和']
+    requiredYaku: ['平和'],
+    doraIndicators: extras.doraIndicators
   };
 };
 
 const buildTanyaoCandidate = (): CandidateQuestion | null => {
   const tiles = createTanyaoHand();
   if (!tiles) return null;
+  const extras = buildRandomExtras();
   return {
     tiles,
     winningTile: pickOne(tiles),
     options: buildOptions({
       isTsumo: Math.random() < 0.5,
-      isOya: Math.random() < 0.5
+      isOya: Math.random() < 0.5,
+      isRiichi: extras.isRiichi,
+      doraTiles: extras.doraTiles
     }),
     label: '断么九',
-    requiredYaku: ['断么九']
+    requiredYaku: ['断么九'],
+    doraIndicators: extras.doraIndicators
   };
 };
 
 const buildYakuhaiCandidate = (): CandidateQuestion | null => {
   const tiles = createYakuhaiHand();
   if (!tiles) return null;
+  const extras = buildRandomExtras();
   return {
     tiles,
     winningTile: pickOne(tiles),
     options: buildOptions({
       isTsumo: Math.random() < 0.5,
-      isOya: Math.random() < 0.5
+      isOya: Math.random() < 0.5,
+      isRiichi: extras.isRiichi,
+      doraTiles: extras.doraTiles
     }),
     label: '役牌',
-    requiredYaku: ['白', '發', '中', '場風 東', '自風 東', '場風・自風 東']
+    requiredYaku: ['白', '發', '中', '場風 東', '自風 東', '場風・自風 東'],
+    doraIndicators: extras.doraIndicators
   };
 };
 
 const buildSanshokuCandidate = (): CandidateQuestion | null => {
   const tiles = createSanshokuHand();
   if (!tiles) return null;
+  const extras = buildRandomExtras();
   return {
     tiles,
     winningTile: pickOne(tiles),
     options: buildOptions({
       isTsumo: Math.random() < 0.5,
-      isOya: Math.random() < 0.5
+      isOya: Math.random() < 0.5,
+      isRiichi: extras.isRiichi,
+      doraTiles: extras.doraTiles
     }),
     label: '三色同順',
-    requiredYaku: ['三色同順']
+    requiredYaku: ['三色同順'],
+    doraIndicators: extras.doraIndicators
   };
 };
 
 const buildSurpriseCandidate = (): CandidateQuestion | null => {
+  const extras = buildRandomExtras();
   if (Math.random() < 0.5) {
     const tiles = createIttsuuHand();
     if (!tiles) return null;
@@ -470,10 +522,13 @@ const buildSurpriseCandidate = (): CandidateQuestion | null => {
       winningTile: pickOne(tiles),
       options: buildOptions({
         isTsumo: Math.random() < 0.5,
-        isOya: Math.random() < 0.5
+        isOya: Math.random() < 0.5,
+        isRiichi: extras.isRiichi,
+        doraTiles: extras.doraTiles
       }),
-      label: '意外性枠（一気通貫）',
-      requiredYaku: ['一気通貫']
+      label: '意外性枠',
+      requiredYaku: ['一気通貫'],
+      doraIndicators: extras.doraIndicators
     };
   }
   const tiles = createHonitsuHand();
@@ -483,10 +538,13 @@ const buildSurpriseCandidate = (): CandidateQuestion | null => {
     winningTile: pickOne(tiles),
     options: buildOptions({
       isTsumo: Math.random() < 0.5,
-      isOya: Math.random() < 0.5
+      isOya: Math.random() < 0.5,
+      isRiichi: extras.isRiichi,
+      doraTiles: extras.doraTiles
     }),
-    label: '意外性枠（混一色）',
-    requiredYaku: ['混一色']
+    label: '意外性枠',
+    requiredYaku: ['混一色'],
+    doraIndicators: extras.doraIndicators
   };
 };
 
@@ -526,7 +584,8 @@ const generateQuestion = (history: boolean[]): QuizQuestion | null => {
       options: candidate.options,
       presentedText,
       expectedText,
-      isCorrect: shouldBeCorrect
+      isCorrect: shouldBeCorrect,
+      doraIndicators: candidate.doraIndicators
     };
   }
   return null;
@@ -589,15 +648,31 @@ export default function ScoreQuizPage() {
             )}
           </div>
         </div>
-        <div className="hand-display">
-          <div className="hand-title">条件</div>
-          <div className="history-option-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '6px' }}>
-            <div>和了方法: {question ? (question.options.isTsumo ? 'ツモ' : 'ロン') : '-'}</div>
-            <div>親番: {question ? (question.options.isOya ? '親' : '子') : '-'}</div>
-            <div>場風: {question?.options.bakaze ?? '-'}</div>
-            <div>自風: {question?.options.jikaze ?? '-'}</div>
-            <div>リーチ: {question ? (question.options.isRiichi ? 'あり' : 'なし') : '-'}</div>
-            <div>門前: {question ? (question.options.isMenzen ? 'あり' : 'なし') : '-'}</div>
+        <div className="hand-display" style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <div className="hand-title">条件</div>
+            <div className="history-option-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '6px' }}>
+              <div>和了方法: {question ? (question.options.isTsumo ? 'ツモ' : 'ロン') : '-'}</div>
+              <div>親番: {question ? (question.options.isOya ? '親' : '子') : '-'}</div>
+              <div>場風: {question?.options.bakaze ?? '-'}</div>
+              <div>自風: {question?.options.jikaze ?? '-'}</div>
+              <div>リーチ: {question ? (question.options.isRiichi ? 'あり' : 'なし') : '-'}</div>
+              <div>門前: {question ? (question.options.isMenzen ? 'あり' : 'なし') : '-'}</div>
+            </div>
+          </div>
+          <div style={{ minWidth: '160px' }}>
+            <div className="hand-title">ドラ表示牌</div>
+            {question && question.doraIndicators.length > 0 ? (
+              <div className="hand-tiles" style={{ justifyContent: 'flex-end' }}>
+                {question.doraIndicators.map((tile, index) => (
+                  <div key={`${tile}-${index}`} className="hand-tile">
+                    <TileFace tile={tile} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="info-text">なし</div>
+            )}
           </div>
         </div>
         <div className="hand-display">
