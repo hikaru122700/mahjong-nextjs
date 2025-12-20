@@ -290,6 +290,18 @@ h1 {
   transition: all 0.2s;
 }
 
+.hand-tile--red {
+  border-color: #e24b4b;
+  box-shadow: inset 0 0 0 2px rgba(226, 75, 75, 0.35);
+}
+
+.history-tile--red {
+  border: 1px solid rgba(226, 75, 75, 0.6);
+  border-radius: 4px;
+  padding: 2px;
+  background: rgba(226, 75, 75, 0.08);
+}
+
 .hand-tile:hover {
   background: #ffe6e6;
 }
