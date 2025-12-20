@@ -135,6 +135,7 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
   const [activeHistoryTab, setActiveHistoryTab] = useState<'hand' | 'options' | 'result'>('hand');
+  const [activeInfoTab, setActiveInfoTab] = useState<'hand' | 'options' | 'result'>('hand');
 
   const getAllSelectedTiles = (options?: { includeWinningTile?: boolean }) => {
     const tiles: Tile[] = [...hand];
@@ -523,9 +524,14 @@ export default function Home() {
     } else {
       setResult(calcResult);
       setError('');
+      setActiveInfoTab('result');
       pushHistoryEntry(calcResult, options);
     }
   };
+
+  const currentMeldSummary = melds.length > 0
+    ? melds.map(meld => `${meld.type.toUpperCase()}(${meld.tiles.join(' ')})`).join(' / ')
+    : 'なし';
 
   return (
     <div className="container">
@@ -647,7 +653,13 @@ export default function Home() {
 
           {/* 現在の手牌表示 */}
           <div className="section compact">
-            <div className="section-title">現在の手牌</div>
+            <button
+              type="button"
+              className="section-title section-title-button"
+              onClick={() => setActiveInfoTab('hand')}
+            >
+              現在の手牌
+            </button>
             <div className="hand-display">
               <div className="hand-title">手牌 (<span>{hand.length}</span>/{14 - getMeldTileCount(melds) - 1}枚)</div>
               <div className="hand-tiles">
@@ -790,7 +802,13 @@ export default function Home() {
         <div className="layout-right">
           {/* オプション設定 */}
           <div className="section compact">
-            <div className="section-title">和了条件</div>
+            <button
+              type="button"
+              className="section-title section-title-button"
+              onClick={() => setActiveInfoTab('options')}
+            >
+              和了条件
+            </button>
             <div className="options">
               <div className="option-group">
                 <div className="option-title">和了方法</div>
@@ -1204,6 +1222,114 @@ export default function Home() {
         </div>
       </div>
 
+      <div className="section compact info-panel">
+        <div className="section-title">情報パネル</div>
+        <div className="info-tabs">
+          <button
+            type="button"
+            className={`btn ${activeInfoTab === 'hand' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveInfoTab('hand')}
+          >
+            手牌
+          </button>
+          <button
+            type="button"
+            className={`btn ${activeInfoTab === 'options' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveInfoTab('options')}
+          >
+            条件
+          </button>
+          <button
+            type="button"
+            className={`btn ${activeInfoTab === 'result' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveInfoTab('result')}
+          >
+            結果
+          </button>
+        </div>
+        <div className="info-content">
+          {activeInfoTab === 'hand' && (
+            <div>
+              <div className="history-hand">
+                <span className="history-label">手牌</span>
+                <div className="history-tiles">
+                  {hand.map((tile, index) => (
+                    <span key={`${tile}-${index}`} className="history-tile">
+                      <TileFace tile={tile} />
+                    </span>
+                  ))}
+                </div>
+                <span className="history-label">和了牌</span>
+                <span className="history-tile history-tile-winning">
+                  {winningTile ? <TileFace tile={winningTile} /> : '未選択'}
+                </span>
+              </div>
+              <div style={{ marginTop: '4px' }}>鳴き: {currentMeldSummary}</div>
+            </div>
+          )}
+          {activeInfoTab === 'options' && (
+            <div className="history-option-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '6px' }}>
+              <div>和了方法: {agariType === 'tsumo' ? 'ツモ' : 'ロン'}</div>
+              <div>リーチ: {formatBooleanOption(riichi)}</div>
+              <div>ダブルリーチ: {formatBooleanOption(isDoubleRiichi)}</div>
+              <div>一発: {formatBooleanOption(ippatsu)}</div>
+              <div>門前: {formatBooleanOption(isMenzen)}</div>
+              <div>親番: {formatBooleanOption(isDealer)}</div>
+              <div>海底: {formatBooleanOption(isHaitei)}</div>
+              <div>河底: {formatBooleanOption(isHoutei)}</div>
+              <div>嶺上: {formatBooleanOption(isRinshan)}</div>
+              <div>槍槓: {formatBooleanOption(isChankan)}</div>
+              <div>流し満貫: {formatBooleanOption(isNagashiMangan)}</div>
+            </div>
+          )}
+          {activeInfoTab === 'result' && (
+            result ? (
+              <div>
+                <div className="result-box">
+                  <div className="result-row">
+                    <span className="result-label">翻数（ハン）</span>
+                    <span className="result-value">{result.han}翻</span>
+                  </div>
+                  <div className="result-row">
+                    <span className="result-label">符（フ）</span>
+                    <span className="result-value">{result.fu}符</span>
+                  </div>
+                  <div className="result-row">
+                    <span className="result-label">点数</span>
+                    <span className="result-value">{result.score}</span>
+                  </div>
+                </div>
+                <div className="yaku-list">
+                  <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#667eea', fontSize: '1.1em' }}>
+                    成立役
+                  </div>
+                  {result.yaku.map((yaku, index) => (
+                    <div
+                      key={index}
+                      className="yaku-item"
+                      style={yaku.han >= 13 ? {
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '1.05em',
+                        padding: '10px 12px',
+                        border: '2px solid #ffd700',
+                        boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+                      } : {}}
+                    >
+                      <span>{yaku.han >= 13 ? '🏆 ' : ''}{yaku.name}</span>
+                      <span>{yaku.han}翻</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="info-text">まだ計算結果がありません。</div>
+            )
+          )}
+        </div>
+      </div>
+
       <div className="section compact">
         <div className="section-title">計算履歴</div>
         {history.length === 0 ? (
@@ -1313,52 +1439,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {/* 結果表示 */}
-      {result && (
-        <div>
-          <div className="section">
-            <div className="section-title">計算結果</div>
-            <div className="result-box">
-              <div className="result-row">
-                <span className="result-label">翻数（ハン）</span>
-                <span className="result-value">{result.han}翻</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">符（フ）</span>
-                <span className="result-value">{result.fu}符</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">点数</span>
-                <span className="result-value">{result.score}</span>
-              </div>
-            </div>
-            <div className="yaku-list">
-              <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#667eea', fontSize: '1.2em' }}>
-                成立役
-              </div>
-              {result.yaku.map((yaku, index) => (
-                <div
-                  key={index}
-                  className="yaku-item"
-                  style={yaku.han >= 13 ? {
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    fontSize: '1.1em',
-                    padding: '12px 15px',
-                    border: '2px solid #ffd700',
-                    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
-                  } : {}}
-                >
-                  <span>{yaku.han >= 13 ? '🏆 ' : ''}{yaku.name}</span>
-                  <span>{yaku.han}翻</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* エラーメッセージ */}
       {error && (
