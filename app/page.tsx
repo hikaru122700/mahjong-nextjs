@@ -146,6 +146,9 @@ export default function Home() {
     return tiles;
   };
 
+  const getTileCount = (tile: Tile, options?: { includeWinningTile?: boolean }) =>
+    getAllSelectedTiles(options).filter(t => t === tile).length;
+
   const exceedsTileLimit = (tile: Tile, options?: { includeWinningTile?: boolean }) => {
     const count = getAllSelectedTiles(options).filter(t => t === tile).length;
     if (count >= 4) {
@@ -537,19 +540,23 @@ export default function Home() {
               <div className="tile-group">
                 <div className="tile-group-title">萬子（マンズ）</div>
                 <div className="tiles">
-                  {TILES.manzu.map(tile => (
-                    <div
-                      key={tile}
-                      className="tile"
-                      onClick={() => addTileToHand(tile)}
-                    >
-                      <TileFace tile={tile} />
-                    </div>
-                  ))}
+                  {TILES.manzu.map(tile => {
+                    const isMaxed = getTileCount(tile) >= 4;
+                    return (
+                      <div
+                        key={tile}
+                        className={`tile${isMaxed ? ' tile--maxed' : ''}`}
+                        onClick={() => addTileToHand(tile)}
+                        aria-disabled={isMaxed}
+                      >
+                        <TileFace tile={tile} />
+                      </div>
+                    );
+                  })}
                   {RED_TILES.filter(tile => tile.suit === 'man').map(tile => (
                     <div
                       key={tile.label}
-                      className="tile tile--red"
+                      className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
                       onClick={() => addRedTileToHand(tile.tile, tile.suit)}
                       title={tile.label}
                     >
@@ -562,19 +569,23 @@ export default function Home() {
               <div className="tile-group">
                 <div className="tile-group-title">筒子（ピンズ）</div>
                 <div className="tiles">
-                  {TILES.pinzu.map(tile => (
-                    <div
-                      key={tile}
-                      className="tile"
-                      onClick={() => addTileToHand(tile)}
-                    >
-                      <TileFace tile={tile} />
-                    </div>
-                  ))}
+                  {TILES.pinzu.map(tile => {
+                    const isMaxed = getTileCount(tile) >= 4;
+                    return (
+                      <div
+                        key={tile}
+                        className={`tile${isMaxed ? ' tile--maxed' : ''}`}
+                        onClick={() => addTileToHand(tile)}
+                        aria-disabled={isMaxed}
+                      >
+                        <TileFace tile={tile} />
+                      </div>
+                    );
+                  })}
                   {RED_TILES.filter(tile => tile.suit === 'pin').map(tile => (
                     <div
                       key={tile.label}
-                      className="tile tile--red"
+                      className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
                       onClick={() => addRedTileToHand(tile.tile, tile.suit)}
                       title={tile.label}
                     >
@@ -587,19 +598,23 @@ export default function Home() {
               <div className="tile-group">
                 <div className="tile-group-title">索子（ソーズ）</div>
                 <div className="tiles">
-                  {TILES.souzu.map(tile => (
-                    <div
-                      key={tile}
-                      className="tile"
-                      onClick={() => addTileToHand(tile)}
-                    >
-                      <TileFace tile={tile} />
-                    </div>
-                  ))}
+                  {TILES.souzu.map(tile => {
+                    const isMaxed = getTileCount(tile) >= 4;
+                    return (
+                      <div
+                        key={tile}
+                        className={`tile${isMaxed ? ' tile--maxed' : ''}`}
+                        onClick={() => addTileToHand(tile)}
+                        aria-disabled={isMaxed}
+                      >
+                        <TileFace tile={tile} />
+                      </div>
+                    );
+                  })}
                   {RED_TILES.filter(tile => tile.suit === 'sou').map(tile => (
                     <div
                       key={tile.label}
-                      className="tile tile--red"
+                      className={`tile tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
                       onClick={() => addRedTileToHand(tile.tile, tile.suit)}
                       title={tile.label}
                     >
@@ -612,15 +627,19 @@ export default function Home() {
               <div className="tile-group">
                 <div className="tile-group-title">字牌</div>
                 <div className="tiles">
-                  {TILES.jihai.map(tile => (
-                    <div
-                      key={tile}
-                      className="tile"
-                      onClick={() => addTileToHand(tile)}
-                    >
-                      <TileFace tile={tile} />
-                    </div>
-                  ))}
+                  {TILES.jihai.map(tile => {
+                    const isMaxed = getTileCount(tile) >= 4;
+                    return (
+                      <div
+                        key={tile}
+                        className={`tile${isMaxed ? ' tile--maxed' : ''}`}
+                        onClick={() => addTileToHand(tile)}
+                        aria-disabled={isMaxed}
+                      >
+                        <TileFace tile={tile} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -689,19 +708,23 @@ export default function Home() {
                 <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>牌を選択:</div>
                 <div className="tile-group">
                   <div className="tiles">
-                    {[...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai].map(tile => (
-                      <div
-                        key={tile}
-                        className="tile tile--mini"
-                        onClick={() => addTileToMeld(tile)}
-                      >
-                        <TileFace tile={tile} />
-                      </div>
-                    ))}
+                    {[...TILES.manzu, ...TILES.pinzu, ...TILES.souzu, ...TILES.jihai].map(tile => {
+                      const isMaxed = getTileCount(tile) >= 4;
+                      return (
+                        <div
+                          key={tile}
+                          className={`tile tile--mini${isMaxed ? ' tile--maxed' : ''}`}
+                          onClick={() => addTileToMeld(tile)}
+                          aria-disabled={isMaxed}
+                        >
+                          <TileFace tile={tile} />
+                        </div>
+                      );
+                    })}
                     {RED_TILES.map(tile => (
                       <div
                         key={tile.label}
-                        className="tile tile--mini tile--red"
+                        className={`tile tile--mini tile--red${getTileCount(tile.tile) >= 4 ? ' tile--maxed' : ''}`}
                         onClick={() => addRedTileToMeld(tile.tile, tile.suit)}
                         title={tile.label}
                       >
